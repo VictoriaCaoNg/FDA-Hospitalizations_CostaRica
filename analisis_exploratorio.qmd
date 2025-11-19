@@ -1,0 +1,685 @@
+---
+title: "Análisis exploratorio - FDA"
+subtitle: "XS3310 Teoría Estadística"
+author: 
+  - name: "Victoria Cao Ng"
+    affiliation: "Escuela de Estadística, Universidad de Costa Rica"
+  - name: "Shu Wei Chou Chen"
+    affiliation: "Escuela de Estadística, Universidad de Costa Rica"
+format: 
+  html:
+    theme: journal
+lang: es
+editor: visual
+bibliography: referencias.bib
+csl: apa.csl
+link-citations: true
+urlcolor: blue
+toc: true
+toc-depth: 3
+toc-location: left
+toc-title: "Contenido"
+toc-expand: 1
+number-sections: true
+---
+
+# Introducción
+
+Las enfermedades respiratorias representan la principal causa de sobrecarga en los sistemas de salud y tienen un impacto importante en la salud humana a nivel mundial. Entre las principales enfermedades que mayor afectan a la salud pública se encuentra la enfermedad pulmonar obstructiva crónica, el asma, las infecciones respiratorias agudas, la tuberculosis y el cáncer de pulmón [@OMS2013].
+
+Diversos estudios han encontrado que existe una asociación entre factores climáticos y de contaminación y hospitalizaciones por enfermedades respiratorias, como @Chen2022, @Rodriguez2015, @Pedder2021, @Zeña2014 y @Tran2022. Por lo que comprender cómo estos factores influyen sobre los patrones de hospitalizaciones es importante para el desarrollo y toma de decisiones de políticas públicas de salud.
+
+Costa Rica es un país que se caracteriza por su diversidad climática. Debido a su topografía, el país presenta microclimas que son distintivos a lo largo de su territorio nacional. @clima2020 realizaron una descripción detallada de las regiones y subregiones climáticas de Costa Rica. Una descripción de la ubicación geográfica y características climáticas de las regiones climáticas de Costa Rica se puede observar en la @tbl-clima . Además, en la @fig-mapa se muestra la ubicación geográfica de cada una de las regiones climáticas.
+
+```{r}
+#| echo: false
+#| message: false
+#| warning: false
+#| tbl-cap: "Tabla de regiones climáticas de Costa Rica"
+#| label: tbl-clima
+library(knitr)
+datos <- data.frame(
+  Región = c("Pacífico Norte", "Pacífico Central", "Pacífico Sur", "Montañosa Sur", "Valle Central", "Región Norte", "Región Atlántica"),
+  Geografía = c("Comprende la provincia de Guanacaste, los cantones de Esparza y Montes de Oro de la provincia de Puntarenas y los cantones de Orotina y San Mateo de la provincia de Alajuela.", "Comprende la parte central de la Vertiente del Pacífico, Playa Herradura o Jacó hasta Dominical, Cerros de Herradura, Cerro Turrubares, Cerro Cangreha, partes bajas de la Fila Costeña, el poblado de Tinamaste, Valle de Parrita, Quepos y Manuel Antonio.", "Se extiende desde Punta Uvita, San Isidro del General, Cordillera de Talamanca del lado del Pacífico, Cerro Darí hasta Cerro Echandí y hasta Punta Burica. La región se divide en cinco subregiones: Valle del General y de Coto Brus, Valle de Diquís, Valle Coto Colorado, Península de Osa y Faldas del Pacífico de la Cordillera de Talamanca.", "Se ubica al sur del Valle Intermontano Central y al sur de los Cerros del Tablazo, Candelaria y Puriscal.", "Se encuentra limitada al norte por la Cordillera Volcánica Central, al sur por los Cerros de Escazú, Tablazo, Cedral y la Fila Candelaria, al oeste de los Montes del Aguacate y al este por las estribaciones de la Cordillera de Talamanca. Comprende los núcleos urbanos más grandes de las provincias de San José, Heredia, Alajuela y Cartago.", "Limita con la Cordillera Volcánica Central, la Cordillera de Guanacaste y la Cordillera de Tilarán.", "Abarca la provincia de Limón y el oriente de Cartago."),
+  Características = c("Esta región se caracteriza por la presencia de un periodo seco y lluvioso bien definidos. Se destaca en esta región la presencia de grupos climáticos como áreas de clima templado y áreas de clima tropical con estación seca.", "Se caracteriza por su clima tropical con una estación seca corta y un periodo lluvioso largo y severo.", "La región se caracteriza por un periodo seco corto y favorable y lluvias intensas, con pequeñas áreas que presentan un clima tropical húmedo y lluvias todo el año.", "Esta región caracterizada por su relieve montañoso y alturas medias de 800 a 1000 msnm la hacen ser un punto climático intermedio entre las lluvias moderadas del Valle Intermontano y las lluvias torrenciales del Pacífico Central. Se registran temperaturas cálidas en las partes bajas y frías en las partes altas.", "Se caracteriza por su climatología mixta Caribe y Pacífica. En las partes bajas del Valle, se puede encontrar un clima seco con marcada influencia del Pacífico. En las partes medias que corresponden a las cabeceras de San José, Heredia y Cartago principalmente, se experimenta un clima templado. En las zonas altas el clima es un poco más lluvioso y frío, característico de las zonas de montaña.", "Se caracteriza por la presencia de lluvias todo el año, con una disminución de las lluvias en los meses de febrero, marzo y octubre. Esta región presenta un clima tropical húmedo.", "Esta región presenta un clima tropical húmedo, la lluvia es abundante, siendo más acentuada en las partes montañosas donde llueve todo el año.")
+)
+
+kable(datos)
+```
+
+<figure id="fig-mapa">
+
+![Regiones climáticas de Costa Rica](region_map.png){#fig-mapa width="500"}
+
+Volviendo al tema de la salud en Costa Rica, es importante mencionar que la salud pública nacional está respaldada por un sistema de seguro social que cada vez se ve más sobrecargado por infecciones respiratorias. Esto ofrece un escenario de interés para el estudio del impacto de factores climáticos sobre las hospitalizaciones respiratorias.
+
+En Costa Rica ya se han realizado estudios, previamente, sobre el tema o temas similares. Sin embargo, muchos de estos solo se quedan con un análisis descriptivo del tema como el estudio realizado por @Chinchilla2018 sobre la carga por enfermedades pulmonares crónicas en Costa Rica. Por otro lado, @Chouchen2024 y @Alfaro2024 han realizado estudios sobre el tema, en donde utilizan series temporales y métodos de pronósticos para predecir el número de hospitalizaciones futuras y analizar la asociación de las hospitalizaciones respiratorias con variables climáticas y de contaminación. Estos dos últimos estudios utilizaron la misma base de datos a analizar más adelante en el presente trabajo. No obstante, el presente estudio busca utilizar un tercer enfoque, el análisis de datos funcionales (FDA por sus siglas en inglés).
+
+El análisis de datos funcionales es una técnica estadística que presenta una amplia gama de posibles aplicaciones. Uno de los libros de texto más utilizados sobre el FDA es el de @Ramsay2002 titulado "Applied Functional Data Analysis: Methods and Case Studies". En este libro, Ramsay y Silverman presentan varios ejemplos de aplicaciones del FDA como el crecimiento humano, índices económicos, criminología, paleontología, entre otros. Estudios más recientes como el de @Allen2011 exploran la relación entre datos funcionales y series de tiempo para estudiar la estacionalidad. También se han publicado libros sobre FDA enfocados en R, como el de @Crainiceanu2024, titulado "Functional Data Analysis with R". El libro presenta ejemplos de aplicaciones de FDA junto al código en R para realizar el análisis. Por último, el FDA también ha sido utilizado para analizar temas de salud similares a este, como en la tesis presentada por @Murillo2021 sobre la evolución mundial del COVID-19 mediante análisis de datos funcionales.
+
+Con la ayuda del análisis de datos funcionales, se podrá modelar con mayor exactitud la evolución a lo largo del tiempo de variables ambientales y su relación con las hospitalizaciones en el país. Esto llevará a una mejor comprensión del comportamiento del número de hospitalizaciones según variaciones estacionales.
+
+Pero antes de explorar relaciones más complejas entre las variables climáticas y las hospitalizaciones, es necesario realizar un análisis exploratorio de los datos funcionales para comprender la estructura de los datos e identificar patrones iniciales de interés.
+
+A continuación se llevará a cabo el análisis exploratorio utilizando un enfoque de análisis de datos funcionales.
+
+# Códigos preliminares
+
+En esta sección, se cargan los paquetes necesarios y los datos.
+
+## Paquetes
+
+```{r}
+#| message: false
+#| warning: false
+library(dplyr)
+library(ggplot2)
+library(ggfortify)
+library(forecast)
+library(fpp2)
+library(data.table)
+library(TTR)
+library(xts)
+library(recipes)
+library(tidyverse)
+library(tidyquant)
+library(timetk)
+library(sweep)
+library(lubridate)
+library(fda)
+library(readxl)
+library(knitr)
+```
+
+## Lectura de datos
+
+```{r}
+load("./Data/datos_finales.RData")
+datos_finales
+# Remover semana 53
+datos_finales <- datos_finales %>% filter(epi.week!=53)
+
+```
+
+# Resultados descriptivos
+
+## Los datos de hospitalización respiratoria.
+
+Para comprender mejor la situación de las hospitalizaciones semanales, la @fig-hosp1 muestra la serie temporal, se observa que la tendencia de las hospitalizaciones por enfermedades respiratorias en Costa Rica se ha mantenido bastante constante a lo largo del tiempo. La línea de tendencia en azul muestra que la cantidad de hospitalizaciones parece disminuir en los años alrededor del 2010 y luego vuelven a aumentar. Además, se puede observar que se repiten patrones regulares cada cierto tiempo, lo cual sugiere que puede haber estacionalidad en la serie.
+
+```{r}
+#| fig-cap: "Hospitalizaciones semanales debido a enfermedades respiratorias en Costa Rica."
+#| label: fig-hosp1
+base1=datos_finales %>% group_by(date) %>% summarise(hospitalizaciones = sum(egreso))
+
+autoplot(ts(base1$hospitalizaciones,start = c(2000,1), frequency = 52)) +  labs(x ="Año", y = "Hospitalizaciones", title="") +
+  geom_smooth()
+
+```
+
+Si se analiza las hospitalizaciones por año, se puede visualizar mejor el patrón estacional de la serie. A continuación, se crea una base con solo la cantidad de hospitalizaciones por cada semana epidemiológica de cada año. Esto para poder comprender mejor el comportamiento de las hospitalizaciones por cada año en estudio.
+
+```{r}
+#| message: false
+base2 <- datos_finales %>% group_by(year, epi.week) %>% summarise(hospitalizaciones = sum(egreso))
+```
+
+```{r}
+#| fig-cap: "Hospitalizaciones semanales debido a enfermedades respiratorias por año en Costa Rica"
+#| label: fig-hosp-año
+ggseasonplot(
+  ts(base1$hospitalizaciones,frequency = 52), year.labels=TRUE, ylab = "Hospitalizaciones", xlab = "Semana epidemiológica", main = "")
+```
+
+En la @fig-hosp-año se visualiza la cantidad de hospitalizaciones semanales para cada año y se puede observar un comportamiento similar entre ellos, en donde el número de hospitalizaciones aumentan en las semanas 25 a 50.
+
+```{r}
+#| message: false
+#| eval: false
+
+
+library(gganimate)
+library(transformr)
+p <- base2 %>%
+  ggplot(aes(x = epi.week, y = hospitalizaciones, group = year, col = year)) +
+    geom_line() +
+    xlab("Semana") + ylab("Hospitalizaciones") +
+    scale_color_gradientn(colours = rainbow(10)) +
+    transition_time(year) +
+    ease_aes('linear') +
+    shadow_mark(colour = "grey70") 
+
+anim <- animate(p, duration = 10, fps = 20, width = 600, height = 400, renderer = gifski_renderer())
+anim_save("seasonplot1.gif", animation = anim)
+```
+
+![Seasonplot in GIF](seasonplot1.gif){#fig-hosp-año1gif}
+
+En la @fig-hosp-año1gif se muestra un GIF de la evolución de las hospitalizaciones semanales para cada año de manera dinámica para su visualización.
+
+Por otra parte, otra forma de visualizar los datos de hospitalización es usando el mapa de calor. La @fig-hosp-año2 muestra que:
+
+-   En el año 2000 hubo una mayor cantidad de hospitalizaciones en la primera mitad del año en comparación a los otros años.
+
+-   La mayor cantidad de hospitalizaciones se encuentran durante las semanas 25 y 50, las cuales corresponden a los meses de la época lluviosa en Costa Rica.
+
+-   En el 2003 parece que el número de hospitalizaciones respiratorias fue mayor que los otros años durante la época lluviosa, como se puede observar por el color más oscuro.
+
+```{r}
+#| message: false
+#| fig-cap: "Gráfico de calor de hospitalizaciones semanales debido a enfermedades respiratorias por año en Costa Rica"
+#| label: fig-hosp-año2
+base2 %>%
+  ggplot(aes(x = year, y = epi.week, fill = hospitalizaciones)) +
+    geom_raster() +
+    ylab("Semana epidemiológica") +
+    xlab("Año") + 
+    labs(fill = "Hospitalizaciones") +
+    scale_fill_viridis_c(option = "A", direction = -1)
+```
+
+### Hospitalizaciones anuales por cantón
+
+Se crea otra base con la cantidad de hospitalizaciones anuales por cantón en Costa Rica.
+
+```{r}
+#| results: hide
+#| message: false
+base3 <- datos_finales %>% group_by(canton, year) %>% summarise(hospitalizaciones = sum(egreso))
+```
+
+La @fig-hosp-canton muestra el número de hospitalizaciones anuales por cantón. Se puede observar que cantones como San José, San Isidro, Pérez Zeledón y Alajuela presentan una mayor cantidad de hospitalizaciones en comparación a otros cantones. Aunque esto se puede deber a que tienen una mayor población. En general, no presenta tendencia a lo largo de los años.
+
+```{r}
+#| fig-cap: "Hospitalizaciones anuales debido a enfermedades respiratorias por cantón en Costa Rica"
+#| label: fig-hosp-canton
+ggseasonplot(
+  ts(base3$hospitalizaciones, frequency = 20), year.labels=TRUE, ylab = "Hospitalizaciones", xlab = "Año", main = "")
+```
+
+### Estacionalidad
+
+En esta sección se enfocará más en analizar la presencia de estacionalidad.
+
+```{r}
+#| message: false
+# Seleccionar solo las hospitalizaciones
+base <- base1 %>% dplyr::select(hospitalizaciones)
+```
+
+```{r}
+#| message: false
+# Convertirlo a un objeto tipo ts
+base.ts <- ts(base, start = c(2000,1), frequency = 52)
+```
+
+### Descomposición clásica de la serie de hospitalizaciones
+
+```{r}
+#| message: false
+#| fig-cap: "Descomposición de la serie temporal de hospitalizaciones semanales debido a enfermedades respiratorias en Costa Rica."
+#| label: fig-hosp4
+decompose_base <- decompose(base.ts,"multiplicative")
+autoplot(decompose_base) + labs(x = "Año", title = "")
+```
+
+Si se descompone la serie temporal de las hospitalizaciones respiratorias en la @fig-hosp4 parece que la tendencia se mantiene mayormente constante, pero como se mencionó anteriormente, las hospitalizaciones parecen disminuir ligeramente en los años alrededor del 2010.
+
+En esta misma figura, se puede observar claramente la estacionalidad en la repetición de las curvas.
+
+```{r}
+#| fig-cap: "Gráfico de caja del número de hospitalizaciones por semana epidemiológica"
+#| label: fig-hosp6
+ggsubseriesplot(base.ts)+ labs(x = "Semana epidemiológica", y = "Hospitalizaciones")
+```
+
+Observando el boxplot en la @fig-hosp6 de las 52 semanas para todos los años, se puede ver que las hospitalizaciones respiratorias tienden a aumentar a partir de la semana 30 hasta la semana 55, lo cual constituye los meses de invierno en Costa Rica, donde aumentan los casos de infecciones respiratorias. También hay un leve aumento de hospitalizaciones respiratorias en las semanas 10 a 20 y luego vuelve a disminuir.
+
+La @fig-hosp7 muestra la función de autocorrelación de la serie. Se puede ver barras altas que se salen de las bandas de confianza, lo cual muestra que cada 52 semanas hay una autocorrelación fuerte y es indicación de estacionalidad.
+
+```{r}
+#| message: false
+#| fig-cap: "Gráfico de autocorrelación entre las hospitalizaciones semanales"
+#| label: fig-hosp7
+
+ggAcf(base.ts) + labs(x = "Lag", y = "Autocorrelación", title = "")
+```
+
+## Análisis por urbanización
+
+Se realiza el análisis con conteos absolutos de hospitalización, y luego con las tasas de hospitalización debido a que la población en riesgo es distinta para dos zonas.
+
+### Por hospitalización absoluta
+
+En esta sección se crea una base en donde se divide los cantones por zonas, rural o urbana. Esta división se realizó según la guía del @inec2018 de la división por zona de los distritos del país. Se contabilizó la cantidad de distritos urbanos y rurales de cada cantón y si el cantón tenía más distritos clasificados como urbanos entonces el cantón es clasificado como urbano, de lo contrario es clasificado como rural.
+
+```{r}
+#| message: false
+urbanos <- c("sanjose", "escazu", "desamparados", "goicochea", "santaana", "alajuelita", "vasquezdecoronado", "tibas", "moravia", "montesdeoca", "curridabat", "alajuela", "grecia", "atenas", "palmares", "cartago", "paraiso", "launion", "oreamuno", "elguarco", "heredia", "barva", "santodomingo", "santabarbara", "sanrafael", "sanisidro", "belen", "flores", "sanpablo", "carrillo", "esparza", "golfito")
+
+# Agregar la clasificación al dataframe
+datos_finales0 <- datos_finales
+datos_finales$urb <- ifelse(datos_finales$canton %in% urbanos, "Urbano", "Rural")
+datos_finales$urb <- as.factor(datos_finales$urb)
+```
+
+```{r}
+#| message: false
+base7 <- datos_finales %>% group_by(urb, year, epi.week) %>% summarise(hospitalizaciones = sum(egreso))
+```
+
+```{r}
+#| fig-cap: "Hospitalizaciones semanales debido a enfermedades respiratorias por zona de residencia en Costa Rica."
+#| label: fig-hosp-zona1
+base7 %>%
+  ggplot(aes(x = year, y = epi.week, fill = hospitalizaciones)) +
+    geom_raster() +
+    facet_grid(~urb) +
+    scale_fill_viridis_c(option = "A", direction = -1) +
+    labs(x = "Año", y = "Semana epidemiológica", fill = "Hospitalizaciones")
+```
+
+Observando la @fig-hosp-zona1, se puede ver que el número de hospitalizaciones por enfermedades respiratorias aumentan durante las semanas 35 a 50 para todos los años, mientras que disminuyen en las semanas 1 a 25. Esta diferencia se ve más marcada en la zona rural que en la urbana. Además, este patrón coincide con la @fig-hosp-año, donde en los meses de lluvia se observa una alza en el número de hospitalizaciones. También se puede observar que en ciertos años la cantidad de hospitalizaciones es mayor tanto para la zona rural como la urbana. Por ejemplo, en el año 2003 los colores son más oscuros que otros años.
+
+Con la siguiente función, se puede calcular la correlación cruzada entre semanas de las hospitalizaciones usando un gráfico de calor.
+
+```{r}
+#| message: false
+facf <- function(df, xvar, yvar, time, lag.max=10) {
+  key <- enquo(xvar)
+  value <- enquo(yvar)
+  timeindex <- enquo(time)
+  x <- df %>%
+    dplyr::select(!!key, !!value, !!timeindex) %>%
+    spread(value=!!value, key=!!key) %>%
+    dplyr::select(-!!timeindex) %>%
+    as.ts() %>%
+    acf(plot=FALSE, lag.max=lag.max, na.action=na.pass)
+  nx <- dim(x$acf)[2]
+  output <- NULL
+  for(i in seq(lag.max+1)) {
+    output <- bind_rows(output,
+      tibble(
+        lag = i-1,
+        x1 = rep(rep(0:(nx-1), nx)),
+        x2 = rep(0:(nx-1), rep(nx,nx)),
+        acf = c(x$acf[i,,])
+    ))
+  }
+  colnames(output)[2:3] <- paste0(rlang::as_name(key),1:2)
+  return(output)
+}
+
+base7a <- base7 %>%
+  nest(data = c(year, epi.week, hospitalizaciones)) %>%
+  mutate(
+    acf = map(data, ~ facf(df=., xvar=epi.week, yvar=hospitalizaciones, time=year))
+  ) %>%
+  dplyr::select(-data) %>%
+  unnest(cols=acf)
+```
+
+En la @fig-hosp-zona2, se puede concluir que:
+
+-   Las semanas 20 a la 35, presentan una correlación alta entre ellas tanto en la zona rural como la zona urbana cuando el rezago es cero. Esto se debe a que esas semanas corresponden a los meses de época lluviosa (Mayo, Junio, Julio, Agosto), que es cuando hay más hospitalizaciones por enfermedades respiratorias.
+
+-   Lo mismo sucede en las semanas 1 a 15, donde la correlación entre estas es alta cuando el rezago es cero. Sin embargo, se puede notar que la correlación es más alta en la zona urbana que en la rural.
+
+-   Existe una correlación fuerte entre las primeras 15 semanas y las semanas 20 a 35 cuando el rezago es cero.
+
+-   Conforme aumenta el rezago, se puede observar que las correlaciones entre las semanas va disminuyendo. Es decir, se puede concluir que para rezagos mayores o iguales a 1, las diferentes semanas epidemiológicas no muestran correlaciones altas entre sí.
+
+```{r}
+#| fig-cap: "Autocorrelación semanal de hospitalizaciones debido a enfermedades respiratorias en Costa Rica por zona y retardo."
+#| label: fig-hosp-zona2
+base7a %>%
+  filter(lag < 4) %>%
+  ggplot(aes(x = epi.week1, y = epi.week2, fill = acf)) +
+      geom_raster() +
+      facet_grid(urb~lag) +
+      scale_fill_viridis_c(option = "A", direction = -1, limits = c(-1, 1)) +
+      labs(x = "Semana epidemiológica 1", y = "Semana epidemiológica 2", fill = "Autocorrelación")
+```
+
+Cada subfigura en la @fig-hosp-zona2 es simétrica, por lo que otra alternativa es mostrar en el triángulo superior izquierda la información de la zona urbana y la zona rural en la inferior. La @fig-hosp-zona3 muestra que en la zona urbana la correlación entre las primeras 35 semanas es mayor que en la zona rural cuando el rezago es cero. Este patrón se pierde cuando aumenta los rezagos.
+
+```{r}
+#| fig-cap: "Autocorrelación direccional de hospitalizaciones semanales en Costa Rica por retardo y zona"
+#| label: fig-hosp-zona3
+base7a %>%
+  filter(
+    lag < 5,
+    (urb=="Urbano" & epi.week2 > epi.week1) | (urb=="Rural" & epi.week2 < epi.week1)
+  ) %>%
+  ggplot(aes(x = epi.week1, y = epi.week2, fill = acf)) +
+      geom_raster() +
+      facet_grid(~lag) +
+      scale_fill_viridis_c(option = "A", direction = -1) +
+      labs(x = "Semana epidemiológica 1", y = "Semana epidemiológica 2", fill = "Autocorrelación")
+
+# Los valores de urbano están por encima de la diagonal.
+```
+
+Siguiendo con el análisis de las autocorrelaciones, en la @fig-hosp-zona4 se puede observar que:
+
+-   Conforme aumenta el los rezagos, la autocorrelación va disminuyendo, aunque el descenso no es muy claro.
+
+-   En la semana 1, cuando el rezago es de 1 a 5, presenta valores de autocorrelación más altos que las otras semanas.
+
+-   Se presentan oscilaciones fuertes tanto en la zona rural como la urbana debido a la alta variabilidad que hay en los datos.
+
+-   En general la autocorrelación no parece ser muy alta.
+
+```{r}
+#| fig-cap: "Autocorrelación de las hospitalizaciones semanales en Costa Rica por zona y retardo"
+#| label: fig-hosp-zona4
+base7a %>%
+  filter(epi.week1==epi.week2) %>%
+  ggplot(aes(x = epi.week1, y = acf, group = lag, col = lag)) +
+      facet_grid(~urb) +
+      geom_line() +
+      scale_color_gradientn(colours = rainbow(10)) +
+      labs(x = "Semana epidemiológica", y = "Autocorrelación", color = "Lag")
+```
+
+Por último, en la @fig-hosp-zona6 se observa que:
+
+-   En la semana 1 presenta valores de autocorrelación más altos que en las otras semanas para las dos zonas, lo cual también se ve reflejado en los otros gráficos.
+
+-   En la zona urbana se puede ver autocorrelaciones más altas en las semanas 10 al 35 que en la zona rural. Esto se puede deber a que la población es mayor en las zonas urbanas.
+
+-   La autocorrelación va disminuyendo conforme aumenta los rezagos. Los colores del gráfico se van esclareciendo conforme uno se mueve en el eje X.
+
+```{r}
+#| fig-cap: "Autocorrelación de las hospitalizaciones semanales en Costa Rica por zona"
+#| label: fig-hosp-zona6
+base7a %>%
+  filter(epi.week1==epi.week2) %>%
+  ggplot(aes(x = lag, y = epi.week1, fill = acf)) +
+      geom_raster() +
+      facet_grid(~urb) +
+      scale_fill_viridis_c(option = "A", direction = -1) +
+      labs(x = "Lag", y = "Semana epidemiológica", fill = "Autocorrelación")
+```
+
+### Por tasa de hospitalización
+
+Debido a que al utilizar las hospitalizaciones absolutas puede generar un sesgo en el análisis ya que no se toma en cuenta el tamaño de la población de las zonas rurales y urbanas, se decidió calcular la tasa de hospitalizaciones para mitigar este riesgo.
+
+A continuación se procede con el cálculo de la tasa de hospitalización por 1.000.000 habitantes.
+
+```{r}
+#| message: false
+datos_finales0 <- datos_finales0
+base8 <- datos_finales %>% group_by(urb, year, epi.week) %>% summarise(hospitalizaciones = sum(egreso)/sum(Poblacion)*1000000)
+```
+
+Según lo que muestra la @fig-hosp-tasa1 el patrón de las semanas 35 a 50, en donde se presenta una mayor cantidad de hospitalizaciones, se mantiene igual que en la @fig-hosp-zona1 . Igualmente se mantiene el patrón de las semanas 1 a 25, donde la tasa de hospitalizaciones es menor. Asimismo, se puede destacar ciertos años en donde la tasa de hospitalizaciones es mayor para las dos zonas de residencia, como en el 2003 que presenta colores más oscuros.
+
+Por otro lado, en el año 2000 se puede observar un comportamiento interesante de las hospitalizaciones. La tasa de hospitalización parece ser mayor en las primeras 15 semanas para ambas zonas en comparación a otros años.
+
+```{r}
+#| fig-cap: "Tasa de hospitalizaciones semanales debido a enfermedades respiratorias por zona de residencia en Costa Rica."
+#| label: fig-hosp-tasa1
+base8 %>%
+  ggplot(aes(x = year, y = epi.week, fill = hospitalizaciones)) +
+    geom_raster() +
+    facet_grid(~urb) +
+    scale_fill_viridis_c(option = "A", direction = -1) +
+    labs(x = "Año", y = "Semana epidemiológica", fill = "Tasa hospitalización")
+```
+
+Siguiendo con el análisis, según la @fig-hosp-tasa2 , se puede notar ciertas diferencias con respecto a la @fig-hosp-zona2 .
+
+-   Primero, los colores son mucho más oscuros en la @fig-hosp-tasa2 , lo que indica una autocorrelación más alta para las dos zonas.
+
+-   Segundo, la diferencia entre las correlaciones en la zona urbana y rural en las semanas 1 a 15 cuando el rezago es 0 ya no es tan notoria en comparación a cuando se utiliza las hospitalizaciones absolutas.
+
+Sin embargo, otros puntos mencionados anteriormente en la @fig-hosp-zona2 se mantienen:
+
+-   Las semanas 20 a la 35, presentan una correlación alta entre ellas tanto en la zona rural como en la zona urbana cuando el rezago es cero.
+
+-   Existe una correlación fuerte entre las primeras 15 semanas y las semanas 20 a 35 cuando el rezago es cero.
+
+-   Conforme aumenta los rezagos, se puede observar que las correlaciones entre las semanas va disminuyendo.
+
+```{r}
+#| fig-cap: "Autocorrelación semanal de la tasa de hospitalizaciones debido a enfermedades respiratorias en Costa Rica por zona y retardo."
+#| label: fig-hosp-tasa2
+#| message: false
+base8a <- base8 %>%
+  nest(data = c(year, epi.week, hospitalizaciones)) %>%
+  mutate(
+    acf = map(data, ~ facf(df=., xvar=epi.week, yvar=hospitalizaciones, time=year))
+  ) %>%
+  dplyr::select(-data) %>%
+  unnest(cols=acf)
+
+base8a %>%
+  filter(lag < 4) %>%
+  ggplot(aes(x = epi.week1, y = epi.week2, fill = acf)) +
+      geom_raster() +
+      facet_grid(urb~lag) +
+      scale_fill_viridis_c(option = "A", direction = -1) +
+      labs(x = "Semana epidemiológica 1", y = "Semana epidemiológica 2", fill = "Autocorrelación")
+```
+
+Similar a las observaciones realizadas en la @fig-hosp-tasa2 , en la @fig-hosp-tasa3 la autocorrelación entre las semanas aumentó en las dos zonas y en los cinco rezagos mostrados. Se puede observar que la correlación de la zona urbana entre las primeras 35 semanas es mayor que en la zona rural cuando el rezago es cero, lo cual también sucede en la @fig-hosp-zona3.
+
+```{r}
+#| fig-cap: "Autocorrelación direccional de la tasa de hospitalizaciones semanales en Costa Rica por retardo y zona"
+#| label: fig-hosp-tasa3
+base8a %>%
+  filter(
+    lag < 5,
+    (urb=="Urbano" & epi.week2 > epi.week1) | (urb=="Rural" & epi.week2 < epi.week1)
+  ) %>%
+  ggplot(aes(x = epi.week1, y = epi.week2, fill = acf)) +
+      geom_raster() +
+      facet_grid(~lag) +
+      scale_fill_viridis_c(option = "A", direction = -1) +
+      labs(x = "Semana epidemiológica 1", y = "Semana epidemiológica 2", fill = "Autocorrelación")
+
+# Los valores de urbano están por encima de la diagonal.
+```
+
+Observando la @fig-hosp-tasa4 , se puede notar la disminución gradual de la autocorrelación conforme aumenta los rezagos, lo cual no se podía apreciar claramente en la @fig-hosp-zona4 . La primera semana, cuando el rezago es de 1 a 5, presenta valores de autocorrelación más altos que las otras semanas, pero cuando el rezago es mayor a cinco, esta tendencia se pierde. Además, después del primer rezago, se presentan oscilaciones fuertes en las dos zonas que se deben a la alta variabilidad que hay en los datos.
+
+```{r}
+#| fig-cap: "Autocorrelación de la tasa de hospitalizaciones semanales en Costa Rica por zona y retardo"
+#| label: fig-hosp-tasa4
+base8a %>%
+  filter(epi.week1==epi.week2) %>%
+  ggplot(aes(x = epi.week1, y = acf, group = lag, col = lag)) +
+      facet_grid(~urb) +
+      geom_line() +
+      scale_color_gradientn(colours = rainbow(10)) +
+      labs(x = "Semana epidemiológica", y = "Autocorrelación", col = "Lag")
+```
+
+Por último, en la @fig-hosp-tasa6 se observa un patrón parecido al observado en la @fig-hosp-zona6 con algunas diferencias:
+
+-   Los dos presentan valores de autocorrelación más altos en la semana 1 en comparación a otras semanas para la zona rural y urbana.
+
+-   En la @fig-hosp-tasa6 la autocorrelación aumenta para las semanas 10 a 35 para las dos zonas de residencia, lo cual no se veía en la @fig-hosp-zona6 .
+
+-   En las dos figuras la autocorrelación va disminuyendo conforme aumenta los rezagos. Los colores del gráfico se van esclareciendo conforme uno se mueve en el eje X.
+
+```{r}
+#| fig-cap: "Autocorrelación de la tasa de hospitalizaciones semanales en Costa Rica por zona"
+#| label: fig-hosp-tasa6
+base8a %>%
+  filter(epi.week1==epi.week2) %>%
+  ggplot(aes(x = lag, y = epi.week1, fill = acf)) +
+      geom_raster() +
+      facet_grid(~urb) +
+      scale_fill_viridis_c(option = "A", direction = -1) +
+      labs(x = "Lag", y = "Semana epidemiológica", fill = "Autocorrelación")
+```
+
+## Plano de fase
+
+En esta sección se va a construir un plano de fase para cada año, esto para observar y comparar el comportamiento de las hospitalizaciones más detalladamente.
+
+Para la construcción de estos planos de fase se utilizó la metodología propuesta por @Allen2011, en su tesis "Comparison of time series and functional data analysis for the study of seasonality". Además, se estará utilizando la base2 para realizar el análisis debido a que esta base tiene las hospitalizaciones semanales de cada año.
+
+En el primer paso se construyó las bases funcionales para suavizar la función. Se escogió el método de b-splines debido a que no asumen una forma funcional específica y permiten modelar relaciones no lineales complejas.
+
+Utilizando la función `create.bspline.basis(rangevalue, nbasis, norder)`, se tomó como `rangevalue` el total de semanas a analizar en el estudio, `norder = 8` fue escogido debido a la suavidad que proporciona y nbasis fue calculado como `8 + 1038 = 1046`.
+
+```{r}
+# Crear los basis
+basis <- create.bspline.basis(rangeval = c(1,1040), nbasis = 1046, norder = 8)
+```
+
+A continuación se crea una función que convierte un entero en un objeto de tipo operador diferencial lineal utilizando la función `int2Lfd( )`. En este caso se va a utilizar 4 porque se quiere estudiar la velocidad y la aceleración.
+
+Después, se calcula el parámetro de suavizamiento y para esto se utiliza la función `smooth-basisPar(argvals, y, fdobj, Lfdobj, lambda)`. Para los `argvals` se toma los valores del índice de la `base2` que va de 1 a 1040, la `y` es la variable de interés, `fdobj` es un objeto de base funcional que en este caso es el objeto basis creado anteriormente, `Lfdobj` se coloca el objeto `Lfdobj_h` previamente calculado y por último se escoge un lambda.
+
+Para escoger el lambda se utilizó la validación cruzada generalizada (GCV por sus siglas en inglés). Se tomó un rango de valores para el lambda de 1e-20 a 10 que será evaluado en la función `lambda2gcv`.
+
+Se creó un objeto `fdPar` que se utilizará como un argumento de la función `lambda2gcv` para estimar parámetros funcionales. Seguidamente se creó una función cuyo único argumento es el logaritmo de base 10 del lambda y dentro de la función se calcula el `lambda2gcv`. Esto por facilidad posterior en donde se necesita calcular el gcv para un rango de lambdas y optimizarlo.
+
+```{r}
+fdPar_obj <- fdPar(basis, Lfdobj = int2Lfd(4)) 
+
+# gcv <- function(log10lambda){
+#   lambda2gcv(log10lambda,
+#              argvals = index(base2),
+#              y = base2$hospitalizaciones,
+#              fdParobj = fdPar_obj)}
+# 
+# 
+# opt <- optimize(gcv, interval = c(-20, 1)) 
+# lambda = opt$minimum
+# lambda
+lambda = 0.999959
+
+```
+
+```{r}
+Lfdobj_h <- int2Lfd(4)
+Hosp_sm <- smooth.basisPar(argvals=index(base2),
+ y=(base2$hospitalizaciones), fdobj=basis,
+ Lfdobj=Lfdobj_h, lambda=10^lambda)
+```
+
+En la @fig-hosp-curva se grafica la curva original (puntos azules) de los datos y la curva suavizada (negro).
+
+```{r}
+#| fig-cap: "Curva original vs curva suavizada de las hospitalizaciones en Costa Rica"
+#| label: fig-hosp-curva
+y_suav <- eval.fd(index(base2), Hosp_sm$fd)
+ggplot(base2, aes(x = index(base2))) +
+  geom_point(aes(y = hospitalizaciones), color = "royalblue") +
+  geom_line(aes(y = y_suav), size = 1.1) +
+  theme_minimal() +
+  labs(x = "Semanas", y = "Hospitalizaciones")
+
+```
+
+A continuación se procede a construir los gráficos de plano de fase utilizando la función `phaseplanePlot( )`.
+
+En la @fig-phase1 se seleccionan las primeras 52 semanas que corresponden al año 2000. Observando el gráfico se puede ver que su trayectoria forma una espiral, lo cual significa que los datos no siguen un comportamiento periódico estable, sino que hay variaciones según la época del año.
+
+En las primeras semanas 1 al 10 se puede observar que forman un pequeño ciclo cerca del cero tanto en velocidad como en aceleración. Esto significa que el ciclo de hospitalizaciones está en una pausa. Este resultado coincide con los presentados en gráficos anteriores, en donde las primeras semanas presentan una menor cantidad de hospitalizaciones en el país.
+
+Se puede ver un ciclo grande en las primeras semanas del año (semanas 11 a 26). En las semanas 11 a 13 la velocidad y la aceleración son negativas, lo cual significa que la cantidad de hospitalizaciones decrece durante este periodo. En la semana 14 la aceleración es cero lo que significa que el aumento de las hospitalizaciones es constante. De la semana 14 en adelante la aceleración aumenta, o sea, que el número de hospitalizaciones va a aumentar pronto. En la semana 16 la velocidad es casi cero que es cuando el número de hospitalizaciones está en su punto más bajo. Después de la semana 16 la velocidad es positiva, por ende las hospitalizaciones aumentan. En la semana 20 la velocidad es positiva pero la aceleración se acerca a 0, esto significa que hay crecimiento estable. Después de la semana 20, el crecimiento de la cantidad de hospitalizaciones comienza a desacelerarse y a partir de la semana 15 las hospitalizaciones comienzan a decrecer.
+
+Después de la semana 26, se forman dos ciclos más pequeños. La cantidad de hospitalizaciones vuelve a aumentar en las semanas 28 a 34, pero con menos fuerza que en el primer ciclo. Seguidamente el ciclo vuelve a perder fuerza. En la semana 35 se inicia otro ciclo y las hospitalizaciones vuelven a aumentar y a finales del año vuelven a caer.
+
+```{r}
+#| fig-cap: "Plano de fase 2000"
+#| label: fig-phase1
+phaseplanePlot(evalarg = 1:52, fdobj = Hosp_sm$fd, Lfdobj1 = 1,Lfdobj2 = 2, labels = list(evalarg = seq(1,52, length = 52),labels = 1:52), ylab = "Aceleración", xlab = "Velocidad", xlim = c(-60, 60), ylim = c(-30, 30))
+```
+
+En la @fig-phase2 se muestra el año 2001 y a diferencia de la @fig-phase1 se muestran varios ciclos grandes. Las primeras semanas inician en un ciclo pequeño donde la aceleración es baja, pero la velocidad es positiva durante todo el ciclo. Después, a partir de la semana 11 se inicia otro ciclo más grande. De las semanas 11 y 12 el crecimiento del número de hospitalizaciones comienza a desacelerarse y a partir de la semana 13 las hospitalizaciones comienzan a decrecer. En la semana 15 la aceleración es 0 por lo que el aumento de egresos es constante. Cuando llega a la semana 18 la velocidad es cero y en las semanas siguientes el número de egresos aumenta rápidamente hasta la semana 22, donde la aceleración es cero otra vez.
+
+En la semana 23 comienza el tercer ciclo. Alrededor de la semana 25 el número de hospitalizaciones comienza decrecer hasta la semana 28, en donde la aceleración se vuelve positiva. Cuando el ciclo llega a la semana 30, la velocidad es cero pero la aceleración es alta por lo que el número de egresos va a aumentar pronto. Las semanas 30 a 33 las hospitalizaciones aumentan.
+
+A partir de la semana 34, se inicia el último ciclo. En las semanas 40 y 41 la velocidad es cero y la aceleración está cercana a cero. En las semanas siguientes, las hospitalizaciones comienzan a decrecer.
+
+A diferencia que la @fig-phase1 , el aumento más importante de las hospitalizaciones respiratorias se da en la segunda mitad del año (semanas 34 a 50).
+
+```{r}
+#| fig-cap: "Plano de fase 2001"
+#| label: fig-phase2
+phaseplanePlot(evalarg = 53:104, fdobj = Hosp_sm$fd, Lfdobj1 = 1,Lfdobj2 = 2, labels = list(evalarg = seq(53,104, length = 52),labels = 1:52), ylab = "Aceleración", xlab = "Velocidad", xlim = c(-60, 60), ylim = c(-30, 30))
+```
+
+A continuación se grafican los planos de fase para todos los años dentro del periodo de estudio.
+
+```{r}
+#| fig-cap: "Comportamiento de las hospitalizaaciones por enfermedades respiratorias en Costa Rica del 2000 al 2019"
+#| fig-subcap: 
+#|   - "2000"
+#|   - "2001"
+#|   - "2002"
+#|   - "2003"
+#|   - "2004"
+#|   - "2005"
+#|   - "2006"
+#|   - "2007"
+#|   - "2008"
+#|   - "2009"
+#|   - "2010"
+#|   - "2011"
+#|   - "2012"
+#|   - "2013"
+#|   - "2014"
+#|   - "2015"
+#|   - "2016"
+#|   - "2017"
+#|   - "2018"
+#|   - "2019"
+#| label: fig-phase3
+#| fig-layout: "grid"
+#| layout-ncol: 4
+
+s <- seq(1, 989, by = 52)
+años <- 2000:2019
+for(i in seq_along(s)){
+  phaseplanePlot(evalarg = s[i]:(s[i]+51), fdobj = Hosp_sm$fd, Lfdobj1 = 1,Lfdobj2 = 2,labels = list(evalarg = seq(s[i],s[i]+51, length = 52),labels = 1:52), ylab = "Aceleración", xlab = "Velocidad", main = paste("Año", años[i]), xlim = c(-80, 60), ylim = c(-35, 30))
+  }
+```
+
+Observando la @fig-phase3 , se puede notar que el comportamiento de las hospitalizaciones por enfermedades respiratorias difiere considerablemente entre los años. Esto indica que el sistema no se comporta igual cada año y existen otros factores que influyen en la dinámica de las hospitalizaciones.
+
+A pesar de esto, aún se puede observar ciertos patrones similares en algunos años:
+
+-   En la mayoría de los años el ciclo más grande se da alrededor de las semanas 25 a 45, que corresponden a la época lluviosa del país, en donde se da la mayor cantidad de hospitalizaciones por enfermedades respiratorias. Un ciclo más grande representa cambios más bruscos en el comportamiento de las hospitalizaciones, como aumentos rápidos y mayor variabilidad en el número de egresos.
+
+-   En los años 2000 al 2010, las últimas semanas del año (semanas 46 a 52) presentan un descenso lento del número de hospitalizaciones respiratorias, que en el gráfico se puede ver que esas semanas presentan una velocidad negativa pero la aceleración es positiva. Este comportamiento se va perdiendo en años posteriores, en donde el número de hospitalizaciones aumenta en las últimas semanas (velocidad y aceleración positiva) o el descenso de las hospitalizaciones es rápida (velocidad y aceleración negativa).
+
+-   Otro comportamiento de interés es que algunos años, como el 2000, 2016 y 2017, los picos de hospitalizaciones respiratorias se adelantan. Por ejemplo, en el año 2000 el pico de hospitalizaciones se adelantó a las semanas 12 a 25. Esto también se puede notar en la @fig-hosp-tasa1, donde el año 2000 presenta una coloración más oscura en las primeras semanas en comparación de otros años. Además, un estudio realizado por @uribe2002, encontró que en el año 2000 hubo picos tempranos del virus de la influenza y el virus respiratorio sincitial.
+
+-   Dos años que muestran comportamientos interesantes son el 2003 y el 2004 debido a que las hospitalizaciones se comportan de forma muy similar. Ambos años comienzan con ciclos pequeños cercanos al origen, o sea, tienen poca energía y el número de hospitalizaciones se mantuvo estable con pequeñas subidas y bajadas durante la mayoría del año. Sin embargo, en las últimas semanas 46 al 52, se produjo un rápido descenso de las hospitalizaciones como se puede observar en las colas largas que se extienden hacia la izquierda.
+
+-   El año 2015 muestra un comportamiento similar al descrito anteriormente, pero al revés. El año inicia con una cola larga a la izquierda, indicando una disminución en las hospitalizaciones respiratorias. Los ciclos que se presentan durante este año son más estables con aumentos y disminuciones pequeños.
+
+-   El 2019 es un año que presenta mayores magnitudes en sus valores de velocidad y aceleración, en comparación de los otros años, aunque sigue un comportamiento similar a de años anteriores. Un año con mayor magnitud significa que hubo subidas y bajadas más rápidas de las hospitalizaciones, así como cambios bruscos en la velocidad de estos aumentos o disminuciones. En este caso, las semanas 19 a 36 presentaron un aumento rápido de hospitalizaciones seguido de una disminución igualmente rápida.
+
+Los años 2009 y 2010 son de interés debido a que en esos años se produjo la pandemia de la gripe A (H1N1) en Costa Rica. En la @fig-phase4 se puede apreciar mejor el comportamiento de las hospitalizaciones para estos dos años.
+
+```{r}
+#| fig-cap: "Plano de fase 2009 y 2010"
+#| fig-subcap: 
+#|   - "2009"
+#|   - "2010"
+#| label: fig-phase4
+#| fig-layout: "grid"
+#| layout-ncol: 2
+phaseplanePlot(evalarg = 469:520, fdobj = Hosp_sm$fd, Lfdobj1 = 1,Lfdobj2 = 2, labels = list(evalarg = seq(469,520, length = 52),labels = 1:52), ylab = "Aceleración", xlab = "Velocidad", xlim = c(-25, 25), ylim = c(-10, 10), main = "Año 2009")
+
+phaseplanePlot(evalarg = 521:572, fdobj = Hosp_sm$fd, Lfdobj1 = 1,Lfdobj2 = 2, labels = list(evalarg = seq(521,572, length = 52),labels = 1:52), ylab = "Aceleración", xlab = "Velocidad", xlim = c(-25, 25), ylim = c(-10, 10), main = "Año 2010")
+```
+
+-   Observando el plano de fase corresponden al 2009, se forman varios ciclos grandes a lo largo del año. El año inicia con un descenso lento del número de hospitalizaciones hasta la semana 6 que es cuando estas vuelven a aumentar. En la semana 11 las hospitalizaciones vuelven a disminuir hasta la semana 20, en donde seguidamente las hospitalizaciones vuelven a aumentar rápidamente hasta la semana 33 (velocidad positiva alta y aceleración positiva). Este aumento rápido coincide con la llegada del virus H1N1 [@influenza2014]. Seguidamente, se inicia el ciclo más grande en la semana 37 con un descenso lento de las hospitalizaciones hasta la semana 41, en donde la velocidad es cero. En las semanas 41 al 48 las hospitalizaciones respiratorias vuelven a aumentar rápidamente hasta que vuelven a caer en las últimas semanas.
+
+-   En el 2010, las primeras semanas 1 al 21 generan dos ciclos con trayectorias parecidas con aumentos y disminuciones rápidas del número de hospitalizaciones. Luego se genera un pequeño ciclo en las semanas 21 al 26, en donde las hospitalizaciones siguen aumentando a lo largo del ciclo pero a diferentes ritmos. A partir de la semana 27 las hospitalizaciones aumentan rápidamente con una velocidad y aceleración alta. A finales de la semana 34, las hospitalizaciones disminuyen y siguen disminuyendo hasta la semana 52. El descenso continuo en la segunda mitad del año se puede deber a que el país pasó a la fase post pandémica, en donde se reduce la circulación del virus H1N1 [@influenza2014].
+
+# Referencias
+
+::: {#refs}
+:::
