@@ -6,6 +6,7 @@ Las enfermedades respiratorias representan una importante carga económica para 
 Si bien el análisis funcional de datos no se utiliza comúnmente en aplicaciones de salud pública, nuestros hallazgos demuestran que, cuando se aplica adecuadamente, puede proporcionar información valiosa para respaldar la toma de decisiones sanitarias basada en la evidencia.
 
 ## Estructura del repositorio
+```
 ├── data/                       # Datos utilizados en el análisis
 ├── analisis_exploratorio.qmd   # Análisis exploratorio inicial
 ├── analisis_exploratorio.html  # Versión renderizada en HTML
@@ -17,3 +18,4 @@ Si bien el análisis funcional de datos no se utiliza comúnmente en aplicacione
 ├── fPCA_files/                   # Carpeta generada automáticamente por Quarto
 ├── regresion_files/              # Carpeta generada automáticamente por Quarto
 └── README.md                   # Este archivo
+```
