@@ -1,11 +1,12 @@
-# Análisis de datos funcionales del impacto de factores climáticos y de contaminación sobre las hospitalizaciones respiratorias
-Este repositorio contiene el código, datos y reportes del proyecto de investigación enfocado en analizar las hospitalizaciones por enfermedades respiratorias mediante el Análisis de Datos funcionales.
+# Functional Data Analysis of Climate and Pollution Impacts on Respiratory Hospitalizations in Costa Rica
 
-## Información General
-Las enfermedades respiratorias representan una importante carga económica para los sistemas de salud a nivel mundial. Su incidencia se ve fuertemente afectada por las variaciones climáticas estacionales, los factores socioeconómicos y la contaminación atmosférica. En este estudio, se propone utilizar el análisis de datos funcionales (FDA) para investigar las egresos hospitalarios semanales por enfermedades respiratorias en Costa Rica, utilizando factores climáticos como la temperatura, la precipitación, la humedad relativa y la profundidad óptica de los aerosoles como indicador de contaminación. Se ajustaron modelos lineales funcionales generalizados con diferentes distribuciones de respuesta (normal, de Poisson y binomial negativa) para evaluar la relación entre estas variables climáticas y las hospitalizaciones por enfermedades respiratorias. El modelo binomial negativo ofrece el mejor ajuste, considerando la sobredispersión de los datos. La interpretación del modelo ofrece una perspectiva informativa y novedosa desde el marco del FDA.
-Si bien el análisis funcional de datos no se utiliza comúnmente en aplicaciones de salud pública, nuestros hallazgos demuestran que, cuando se aplica adecuadamente, puede proporcionar información valiosa para respaldar la toma de decisiones sanitarias basada en la evidencia.
+This repository contains the code, data, and reports of the research project focused on analyzing hospitalizations for respiratory diseases through Functional Data Analysis.
 
-## Estructura del repositorio
+## General information
+
+Respiratory diseases pose a major economic burden on healthcare systems globally. Their incidence is strongly affected by seasonal climatic variations, socioeconomic factors, and air pollution. In this study, we propose using functional data analysis (FDA) to investigate weekly hospital discharges due to respiratory diseases in Costa Rica, using climatic factors such as temperature, precipitation, relative humidity, and aerosol optical depth as an indicator of pollution. Generalized functional linear models with different response distributions (Normal, Poisson, and Negative Binomial) are fitted to assess the relationship between these climatic variables and respiratory hospitalizations. The Negative Binomial model provides the best fit, accounting for overdispersion in the data. The interpretation of the model offers an informative and novel perspective from the FDA framework. Although functional data analysis is not commonly used in public health applications, our findings demonstrate that, when appropriately applied, it can provide valuable insights to support evidence-based healthcare decision-making.
+
+## Repository structure
 ```
 ├── data/                       # Datos utilizados en el análisis
 ├── analisis_exploratorio.qmd   # Análisis exploratorio inicial
