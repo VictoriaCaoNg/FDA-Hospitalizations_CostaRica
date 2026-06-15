@@ -1,0 +1,1638 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml" lang="es" xml:lang="es"><head>
+
+<meta charset="utf-8">
+<meta name="generator" content="quarto-1.3.353">
+
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
+
+<meta name="author" content="Victoria Cao Ng">
+<meta name="author" content="Shu Wei Chou Chen">
+
+<title>Regresión con rezago 1</title>
+<style>
+code{white-space: pre-wrap;}
+span.smallcaps{font-variant: small-caps;}
+div.columns{display: flex; gap: min(4vw, 1.5em);}
+div.column{flex: auto; overflow-x: auto;}
+div.hanging-indent{margin-left: 1.5em; text-indent: -1.5em;}
+ul.task-list{list-style: none;}
+ul.task-list li input[type="checkbox"] {
+  width: 0.8em;
+  margin: 0 0.8em 0.2em -1em; /* quarto-specific, see https://github.com/quarto-dev/quarto-cli/issues/4556 */ 
+  vertical-align: middle;
+}
+/* CSS for syntax highlighting */
+pre > code.sourceCode { white-space: pre; position: relative; }
+pre > code.sourceCode > span { display: inline-block; line-height: 1.25; }
+pre > code.sourceCode > span:empty { height: 1.2em; }
+.sourceCode { overflow: visible; }
+code.sourceCode > span { color: inherit; text-decoration: inherit; }
+div.sourceCode { margin: 1em 0; }
+pre.sourceCode { margin: 0; }
+@media screen {
+div.sourceCode { overflow: auto; }
+}
+@media print {
+pre > code.sourceCode { white-space: pre-wrap; }
+pre > code.sourceCode > span { text-indent: -5em; padding-left: 5em; }
+}
+pre.numberSource code
+  { counter-reset: source-line 0; }
+pre.numberSource code > span
+  { position: relative; left: -4em; counter-increment: source-line; }
+pre.numberSource code > span > a:first-child::before
+  { content: counter(source-line);
+    position: relative; left: -1em; text-align: right; vertical-align: baseline;
+    border: none; display: inline-block;
+    -webkit-touch-callout: none; -webkit-user-select: none;
+    -khtml-user-select: none; -moz-user-select: none;
+    -ms-user-select: none; user-select: none;
+    padding: 0 4px; width: 4em;
+  }
+pre.numberSource { margin-left: 3em;  padding-left: 4px; }
+div.sourceCode
+  {   }
+@media screen {
+pre > code.sourceCode > span > a:first-child::before { text-decoration: underline; }
+}
+</style>
+
+
+<script src="Regresion lag1_files/libs/clipboard/clipboard.min.js"></script>
+<script src="Regresion lag1_files/libs/quarto-html/quarto.js"></script>
+<script src="Regresion lag1_files/libs/quarto-html/popper.min.js"></script>
+<script src="Regresion lag1_files/libs/quarto-html/tippy.umd.min.js"></script>
+<script src="Regresion lag1_files/libs/quarto-html/anchor.min.js"></script>
+<link href="Regresion lag1_files/libs/quarto-html/tippy.css" rel="stylesheet">
+<link href="Regresion lag1_files/libs/quarto-html/quarto-syntax-highlighting.css" rel="stylesheet" id="quarto-text-highlighting-styles">
+<script src="Regresion lag1_files/libs/bootstrap/bootstrap.min.js"></script>
+<link href="Regresion lag1_files/libs/bootstrap/bootstrap-icons.css" rel="stylesheet">
+<link href="Regresion lag1_files/libs/bootstrap/bootstrap.min.css" rel="stylesheet" id="quarto-bootstrap" data-mode="light">
+
+
+</head>
+
+<body>
+
+<div id="quarto-content" class="page-columns page-rows-contents page-layout-article toc-left">
+<div id="quarto-sidebar-toc-left" class="sidebar toc-left">
+  <nav id="TOC" role="doc-toc" class="toc-active" data-toc-expanded="1">
+    <h2 id="toc-title">Contenido</h2>
+   
+  <ul>
+  <li><a href="#códigos-preliminares" id="toc-códigos-preliminares" class="nav-link active" data-scroll-target="#códigos-preliminares"><span class="header-section-number">1</span> Códigos preliminares</a>
+  <ul class="collapse">
+  <li><a href="#paquetes" id="toc-paquetes" class="nav-link" data-scroll-target="#paquetes"><span class="header-section-number">1.1</span> Paquetes</a></li>
+  <li><a href="#lectura-de-datos" id="toc-lectura-de-datos" class="nav-link" data-scroll-target="#lectura-de-datos"><span class="header-section-number">1.2</span> Lectura de datos</a></li>
+  <li><a href="#covariables-rezagadas" id="toc-covariables-rezagadas" class="nav-link" data-scroll-target="#covariables-rezagadas"><span class="header-section-number">1.3</span> Covariables rezagadas</a></li>
+  </ul></li>
+  <li><a href="#modelo-de-regresión-funcional" id="toc-modelo-de-regresión-funcional" class="nav-link" data-scroll-target="#modelo-de-regresión-funcional"><span class="header-section-number">2</span> Modelo de regresión funcional</a>
+  <ul class="collapse">
+  <li><a href="#normal" id="toc-normal" class="nav-link" data-scroll-target="#normal"><span class="header-section-number">2.1</span> Normal</a>
+  <ul class="collapse">
+  <li><a href="#supuestos" id="toc-supuestos" class="nav-link" data-scroll-target="#supuestos"><span class="header-section-number">2.1.1</span> Supuestos</a></li>
+  </ul></li>
+  <li><a href="#poisson" id="toc-poisson" class="nav-link" data-scroll-target="#poisson"><span class="header-section-number">2.2</span> Poisson</a>
+  <ul class="collapse">
+  <li><a href="#supuestos-1" id="toc-supuestos-1" class="nav-link" data-scroll-target="#supuestos-1"><span class="header-section-number">2.2.1</span> Supuestos</a></li>
+  </ul></li>
+  <li><a href="#quasi-poisson" id="toc-quasi-poisson" class="nav-link" data-scroll-target="#quasi-poisson"><span class="header-section-number">2.3</span> Quasi-Poisson</a>
+  <ul class="collapse">
+  <li><a href="#supuestos-2" id="toc-supuestos-2" class="nav-link" data-scroll-target="#supuestos-2"><span class="header-section-number">2.3.1</span> Supuestos</a></li>
+  </ul></li>
+  <li><a href="#binomial-negativa" id="toc-binomial-negativa" class="nav-link" data-scroll-target="#binomial-negativa"><span class="header-section-number">2.4</span> Binomial Negativa</a>
+  <ul class="collapse">
+  <li><a href="#supuestos-3" id="toc-supuestos-3" class="nav-link" data-scroll-target="#supuestos-3"><span class="header-section-number">2.4.1</span> Supuestos</a></li>
+  </ul></li>
+  </ul></li>
+  <li><a href="#modelo-final" id="toc-modelo-final" class="nav-link" data-scroll-target="#modelo-final"><span class="header-section-number">3</span> Modelo final</a>
+  <ul class="collapse">
+  <li><a href="#diagnóstico" id="toc-diagnóstico" class="nav-link" data-scroll-target="#diagnóstico"><span class="header-section-number">3.1</span> Diagnóstico</a></li>
+  <li><a href="#interpretaciones" id="toc-interpretaciones" class="nav-link" data-scroll-target="#interpretaciones"><span class="header-section-number">3.2</span> Interpretaciones</a></li>
+  </ul></li>
+  </ul>
+</nav>
+</div>
+<div id="quarto-margin-sidebar" class="sidebar margin-sidebar">
+</div>
+<main class="content" id="quarto-document-content">
+
+<header id="title-block-header" class="quarto-title-block default">
+<div class="quarto-title">
+<h1 class="title">Regresión con rezago 1</h1>
+</div>
+
+
+<div class="quarto-title-meta-author">
+  <div class="quarto-title-meta-heading">Autores/as</div>
+  <div class="quarto-title-meta-heading">Afiliación</div>
+  
+    <div class="quarto-title-meta-contents">
+    <p class="author">Victoria Cao Ng </p>
+  </div>
+    <div class="quarto-title-meta-contents">
+        <p class="affiliation">
+            Escuela de Estadística, Universidad de Costa Rica
+          </p>
+      </div>
+      <div class="quarto-title-meta-contents">
+    <p class="author">Shu Wei Chou Chen </p>
+  </div>
+    <div class="quarto-title-meta-contents">
+        <p class="affiliation">
+            Escuela de Estadística, Universidad de Costa Rica
+          </p>
+      </div>
+    </div>
+
+<div class="quarto-title-meta">
+
+      
+  
+    
+  </div>
+  
+
+</header>
+
+<section id="códigos-preliminares" class="level1" data-number="1">
+<h1 data-number="1"><span class="header-section-number">1</span> Códigos preliminares</h1>
+<p>En esta sección, se cargan los paquetes necesarios y los datos.</p>
+<section id="paquetes" class="level2" data-number="1.1">
+<h2 data-number="1.1" class="anchored" data-anchor-id="paquetes"><span class="header-section-number">1.1</span> Paquetes</h2>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb1"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(dplyr)</span>
+<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(ggplot2)</span>
+<span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(ggfortify)</span>
+<span id="cb1-4"><a href="#cb1-4" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(forecast)</span>
+<span id="cb1-5"><a href="#cb1-5" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(fpp2)</span>
+<span id="cb1-6"><a href="#cb1-6" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(data.table)</span>
+<span id="cb1-7"><a href="#cb1-7" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(TTR)</span>
+<span id="cb1-8"><a href="#cb1-8" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(xts)</span>
+<span id="cb1-9"><a href="#cb1-9" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(recipes)</span>
+<span id="cb1-10"><a href="#cb1-10" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(tidyverse)</span>
+<span id="cb1-11"><a href="#cb1-11" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(tidyquant)</span>
+<span id="cb1-12"><a href="#cb1-12" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(timetk)</span>
+<span id="cb1-13"><a href="#cb1-13" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(sweep)</span>
+<span id="cb1-14"><a href="#cb1-14" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(lubridate)</span>
+<span id="cb1-15"><a href="#cb1-15" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(fda)</span>
+<span id="cb1-16"><a href="#cb1-16" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(readxl)</span>
+<span id="cb1-17"><a href="#cb1-17" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(knitr)</span>
+<span id="cb1-18"><a href="#cb1-18" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(refund)</span>
+<span id="cb1-19"><a href="#cb1-19" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(mgcv)</span>
+<span id="cb1-20"><a href="#cb1-20" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(fields)</span>
+<span id="cb1-21"><a href="#cb1-21" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(car)</span>
+<span id="cb1-22"><a href="#cb1-22" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(gratia)</span>
+<span id="cb1-23"><a href="#cb1-23" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(tidyfun)</span>
+<span id="cb1-24"><a href="#cb1-24" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(caret)</span></code><button title="Copiar al portapapeles" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</div>
+</section>
+<section id="lectura-de-datos" class="level2" data-number="1.2">
+<h2 data-number="1.2" class="anchored" data-anchor-id="lectura-de-datos"><span class="header-section-number">1.2</span> Lectura de datos</h2>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb2"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a><span class="fu">load</span>(<span class="st">"./Data/datos_finales.RData"</span>)</span>
+<span id="cb2-2"><a href="#cb2-2" aria-hidden="true" tabindex="-1"></a><span class="fu">load</span>(<span class="st">"./Data/datos_AOD_HR.Rdata"</span>)</span>
+<span id="cb2-3"><a href="#cb2-3" aria-hidden="true" tabindex="-1"></a>poblacion <span class="ot">&lt;-</span> <span class="fu">read_xlsx</span>(<span class="st">"./Data/Poblacion_Nacional.xlsx"</span>)</span>
+<span id="cb2-4"><a href="#cb2-4" aria-hidden="true" tabindex="-1"></a>datos_finales</span></code><button title="Copiar al portapapeles" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-stdout">
+<pre><code># A tibble: 84,483 × 29
+   canton   year epi.week egreso date       CCanton Poblacion Tmax_max Tmax_mean
+   &lt;chr&gt;   &lt;dbl&gt;    &lt;dbl&gt;  &lt;dbl&gt; &lt;date&gt;       &lt;dbl&gt;     &lt;dbl&gt;    &lt;dbl&gt;     &lt;dbl&gt;
+ 1 abanga…  2000        1      1 2000-01-03     507    16531      34.1      30.5
+ 2 abanga…  2000        2      1 2000-01-10     507    16536.     34.0      30.8
+ 3 abanga…  2000        3      2 2000-01-17     507    16541.     32.7      30.0
+ 4 abanga…  2000        4      2 2000-01-24     507    16545.     34.9      31.8
+ 5 abanga…  2000        5      0 2000-01-31     507    16550.     35.2      32.3
+ 6 abanga…  2000        6      1 2000-02-07     507    16555.     34.7      32.1
+ 7 abanga…  2000        7      1 2000-02-14     507    16560.     36.3      33.4
+ 8 abanga…  2000        8      1 2000-02-21     507    16564.     35.4      32.4
+ 9 abanga…  2000        9      1 2000-02-28     507    16569.     35.3      31.5
+10 abanga…  2000       10      1 2000-03-06     507    16574.     33.6      31.3
+# ℹ 84,473 more rows
+# ℹ 20 more variables: Tmax_min &lt;dbl&gt;, n_Tmax_Q3 &lt;dbl&gt;, Tmin_min &lt;dbl&gt;,
+#   Tmin_mean &lt;dbl&gt;, Tmin_max &lt;dbl&gt;, n_Tmin_Q1 &lt;dbl&gt;, amplitude_max_max &lt;dbl&gt;,
+#   amplitude_max_mean &lt;dbl&gt;, amplitude_max_min &lt;dbl&gt;, amplitude_min_max &lt;dbl&gt;,
+#   amplitude_min_mean &lt;dbl&gt;, amplitude_min_min &lt;dbl&gt;, n_amplitude_Q3 &lt;dbl&gt;,
+#   n_amplitude_P90 &lt;dbl&gt;, precip_max_max &lt;dbl&gt;, precip_max_mean &lt;dbl&gt;,
+#   precip_max_min &lt;dbl&gt;, precip_mean_mean &lt;dbl&gt;, n_precip_max_Q3 &lt;dbl&gt;, …</code></pre>
+</div>
+<div class="sourceCode cell-code" id="cb4"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb4-1"><a href="#cb4-1" aria-hidden="true" tabindex="-1"></a><span class="co"># Remover semana 53</span></span>
+<span id="cb4-2"><a href="#cb4-2" aria-hidden="true" tabindex="-1"></a>datos_finales <span class="ot">&lt;-</span> datos_finales <span class="sc">%&gt;%</span> <span class="fu">filter</span>(epi.week<span class="sc">!=</span><span class="dv">53</span>)</span></code><button title="Copiar al portapapeles" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</div>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb5"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb5-1"><a href="#cb5-1" aria-hidden="true" tabindex="-1"></a><span class="co"># Respuesta</span></span>
+<span id="cb5-2"><a href="#cb5-2" aria-hidden="true" tabindex="-1"></a>week <span class="ot">&lt;-</span> <span class="dv">1</span><span class="sc">:</span><span class="dv">52</span></span>
+<span id="cb5-3"><a href="#cb5-3" aria-hidden="true" tabindex="-1"></a>y <span class="ot">&lt;-</span> datos_finales <span class="sc">%&gt;%</span> <span class="fu">group_by</span>(year,epi.week) <span class="sc">%&gt;%</span> <span class="fu">summarise</span>(<span class="at">hospitalizaciones =</span> <span class="fu">sum</span>(egreso)) <span class="sc">%&gt;%</span> <span class="fu">pivot_wider</span>(<span class="at">names_from =</span> epi.week, <span class="at">values_from =</span> hospitalizaciones) <span class="sc">%&gt;%</span> <span class="fu">arrange</span>(year)</span>
+<span id="cb5-4"><a href="#cb5-4" aria-hidden="true" tabindex="-1"></a>y <span class="ot">&lt;-</span> <span class="fu">as.matrix</span>(y)[,<span class="sc">-</span><span class="dv">1</span>]</span>
+<span id="cb5-5"><a href="#cb5-5" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb5-6"><a href="#cb5-6" aria-hidden="true" tabindex="-1"></a><span class="co"># Covariables</span></span>
+<span id="cb5-7"><a href="#cb5-7" aria-hidden="true" tabindex="-1"></a>Tmax_mean <span class="ot">&lt;-</span> datos_finales <span class="sc">%&gt;%</span> <span class="fu">group_by</span>(year, epi.week) <span class="sc">%&gt;%</span> <span class="fu">summarise</span>(<span class="at">Tmax_mean =</span> <span class="fu">mean</span>(Tmax_mean, <span class="at">na.rm =</span> T)) <span class="sc">%&gt;%</span> <span class="fu">pivot_wider</span>(<span class="at">names_from =</span> epi.week, <span class="at">values_from =</span> Tmax_mean) <span class="sc">%&gt;%</span> <span class="fu">arrange</span>(year)</span>
+<span id="cb5-8"><a href="#cb5-8" aria-hidden="true" tabindex="-1"></a>Tmax_mean <span class="ot">&lt;-</span> <span class="fu">as.matrix</span>(Tmax_mean)[,<span class="sc">-</span><span class="dv">1</span>]</span>
+<span id="cb5-9"><a href="#cb5-9" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb5-10"><a href="#cb5-10" aria-hidden="true" tabindex="-1"></a>Tmin_mean <span class="ot">&lt;-</span> datos_finales <span class="sc">%&gt;%</span> <span class="fu">group_by</span>(year, epi.week) <span class="sc">%&gt;%</span> <span class="fu">summarise</span>(<span class="at">Tmin_mean =</span> <span class="fu">mean</span>(Tmin_mean, <span class="at">na.rm =</span> T)) <span class="sc">%&gt;%</span> <span class="fu">pivot_wider</span>(<span class="at">names_from =</span> epi.week, <span class="at">values_from =</span> Tmin_mean) <span class="sc">%&gt;%</span> <span class="fu">arrange</span>(year)</span>
+<span id="cb5-11"><a href="#cb5-11" aria-hidden="true" tabindex="-1"></a>Tmin_mean <span class="ot">&lt;-</span> <span class="fu">as.matrix</span>(Tmin_mean)[,<span class="sc">-</span><span class="dv">1</span>]</span>
+<span id="cb5-12"><a href="#cb5-12" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb5-13"><a href="#cb5-13" aria-hidden="true" tabindex="-1"></a>precip_mean <span class="ot">&lt;-</span> datos_finales <span class="sc">%&gt;%</span> <span class="fu">group_by</span>(year, epi.week) <span class="sc">%&gt;%</span> <span class="fu">summarise</span>(<span class="at">Precip_mean =</span> <span class="fu">mean</span>(precip_mean_mean, <span class="at">na.rm =</span> T)) <span class="sc">%&gt;%</span> <span class="fu">pivot_wider</span>(<span class="at">names_from =</span> epi.week, <span class="at">values_from =</span> Precip_mean) <span class="sc">%&gt;%</span> <span class="fu">arrange</span>(year)</span>
+<span id="cb5-14"><a href="#cb5-14" aria-hidden="true" tabindex="-1"></a>precip_mean <span class="ot">&lt;-</span> <span class="fu">as.matrix</span>(precip_mean)[,<span class="sc">-</span><span class="dv">1</span>]</span>
+<span id="cb5-15"><a href="#cb5-15" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb5-16"><a href="#cb5-16" aria-hidden="true" tabindex="-1"></a>amp_max_mean <span class="ot">&lt;-</span> datos_finales <span class="sc">%&gt;%</span> <span class="fu">group_by</span>(year, epi.week) <span class="sc">%&gt;%</span> <span class="fu">summarise</span>(<span class="at">amp_max_mean =</span> <span class="fu">mean</span>(amplitude_max_mean, <span class="at">na.rm =</span> T)) <span class="sc">%&gt;%</span> <span class="fu">pivot_wider</span>(<span class="at">names_from =</span> epi.week, <span class="at">values_from =</span> amp_max_mean) <span class="sc">%&gt;%</span> <span class="fu">arrange</span>(year)</span>
+<span id="cb5-17"><a href="#cb5-17" aria-hidden="true" tabindex="-1"></a>amp_max_mean <span class="ot">&lt;-</span> <span class="fu">as.matrix</span>(amp_max_mean)[,<span class="sc">-</span><span class="dv">1</span>]</span>
+<span id="cb5-18"><a href="#cb5-18" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb5-19"><a href="#cb5-19" aria-hidden="true" tabindex="-1"></a>amp_min_mean <span class="ot">&lt;-</span> datos_finales <span class="sc">%&gt;%</span> <span class="fu">group_by</span>(year, epi.week) <span class="sc">%&gt;%</span> <span class="fu">summarise</span>(<span class="at">amp_min_mean =</span> <span class="fu">mean</span>(amplitude_min_mean, <span class="at">na.rm =</span> T)) <span class="sc">%&gt;%</span> <span class="fu">pivot_wider</span>(<span class="at">names_from =</span> epi.week, <span class="at">values_from =</span> amp_min_mean) <span class="sc">%&gt;%</span> <span class="fu">arrange</span>(year)</span>
+<span id="cb5-20"><a href="#cb5-20" aria-hidden="true" tabindex="-1"></a>amp_min_mean <span class="ot">&lt;-</span> <span class="fu">as.matrix</span>(amp_min_mean)[,<span class="sc">-</span><span class="dv">1</span>]</span>
+<span id="cb5-21"><a href="#cb5-21" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb5-22"><a href="#cb5-22" aria-hidden="true" tabindex="-1"></a>AOD <span class="ot">&lt;-</span> datos_aerosol <span class="sc">%&gt;%</span> <span class="fu">pivot_wider</span>(<span class="at">names_from =</span> week, <span class="at">values_from =</span> aerosol) <span class="sc">%&gt;%</span> <span class="fu">arrange</span>(year)</span>
+<span id="cb5-23"><a href="#cb5-23" aria-hidden="true" tabindex="-1"></a>AOD <span class="ot">&lt;-</span> <span class="fu">as.matrix</span>(AOD)[,<span class="sc">-</span><span class="dv">1</span>]</span>
+<span id="cb5-24"><a href="#cb5-24" aria-hidden="true" tabindex="-1"></a>AOD <span class="ot">&lt;-</span> <span class="fu">scale</span>(AOD, <span class="at">center =</span> T, <span class="at">scale =</span> T)</span>
+<span id="cb5-25"><a href="#cb5-25" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb5-26"><a href="#cb5-26" aria-hidden="true" tabindex="-1"></a>HR <span class="ot">&lt;-</span> datos_HR_finales <span class="sc">%&gt;%</span> <span class="fu">pivot_wider</span>(<span class="at">names_from =</span> week, <span class="at">values_from =</span> RH) <span class="sc">%&gt;%</span> <span class="fu">arrange</span>(year)</span>
+<span id="cb5-27"><a href="#cb5-27" aria-hidden="true" tabindex="-1"></a>HR <span class="ot">&lt;-</span> <span class="fu">as.matrix</span>(HR)[,<span class="sc">-</span><span class="dv">1</span>]</span></code><button title="Copiar al portapapeles" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</div>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb6"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb6-1"><a href="#cb6-1" aria-hidden="true" tabindex="-1"></a>base <span class="ot">&lt;-</span> <span class="fu">list</span>()</span>
+<span id="cb6-2"><a href="#cb6-2" aria-hidden="true" tabindex="-1"></a>base<span class="sc">$</span>Y <span class="ot">&lt;-</span> y</span>
+<span id="cb6-3"><a href="#cb6-3" aria-hidden="true" tabindex="-1"></a>base<span class="sc">$</span>Tmax <span class="ot">&lt;-</span> Tmax_mean</span>
+<span id="cb6-4"><a href="#cb6-4" aria-hidden="true" tabindex="-1"></a>base<span class="sc">$</span>Tmin <span class="ot">&lt;-</span> Tmin_mean</span>
+<span id="cb6-5"><a href="#cb6-5" aria-hidden="true" tabindex="-1"></a>base<span class="sc">$</span>precip <span class="ot">&lt;-</span> precip_mean</span>
+<span id="cb6-6"><a href="#cb6-6" aria-hidden="true" tabindex="-1"></a>base<span class="sc">$</span>amp_max_mean <span class="ot">&lt;-</span> amp_max_mean</span>
+<span id="cb6-7"><a href="#cb6-7" aria-hidden="true" tabindex="-1"></a>base<span class="sc">$</span>amp_min_mean <span class="ot">&lt;-</span> amp_min_mean</span>
+<span id="cb6-8"><a href="#cb6-8" aria-hidden="true" tabindex="-1"></a>base<span class="sc">$</span>aerosol <span class="ot">&lt;-</span> AOD</span>
+<span id="cb6-9"><a href="#cb6-9" aria-hidden="true" tabindex="-1"></a>base<span class="sc">$</span>HR <span class="ot">&lt;-</span> HR</span></code><button title="Copiar al portapapeles" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</div>
+</section>
+<section id="covariables-rezagadas" class="level2" data-number="1.3">
+<h2 data-number="1.3" class="anchored" data-anchor-id="covariables-rezagadas"><span class="header-section-number">1.3</span> Covariables rezagadas</h2>
+<p>Con el fin de explorar posibles efectos retardados, se ajustaron modelos que incorporan las covariables meteorológicas rezagadas una semana. Este análisis se llevó a cabo para cada una de las distribuciones consideradas (normal, Poisson, quasi-Poisson y binomial negativa).</p>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb7"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb7-1"><a href="#cb7-1" aria-hidden="true" tabindex="-1"></a>lag_matrix <span class="ot">&lt;-</span> <span class="cf">function</span>(x, k){</span>
+<span id="cb7-2"><a href="#cb7-2" aria-hidden="true" tabindex="-1"></a>  <span class="fu">cbind</span>(</span>
+<span id="cb7-3"><a href="#cb7-3" aria-hidden="true" tabindex="-1"></a>    <span class="fu">matrix</span>(<span class="cn">NA</span>, <span class="fu">nrow</span>(x), k),</span>
+<span id="cb7-4"><a href="#cb7-4" aria-hidden="true" tabindex="-1"></a>    x[, <span class="dv">1</span><span class="sc">:</span>(<span class="fu">ncol</span>(x)<span class="sc">-</span>k)]</span>
+<span id="cb7-5"><a href="#cb7-5" aria-hidden="true" tabindex="-1"></a>  )</span>
+<span id="cb7-6"><a href="#cb7-6" aria-hidden="true" tabindex="-1"></a>}</span></code><button title="Copiar al portapapeles" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</div>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb8"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb8-1"><a href="#cb8-1" aria-hidden="true" tabindex="-1"></a>tmax_lag1  <span class="ot">&lt;-</span> <span class="fu">lag_matrix</span>(base<span class="sc">$</span>Tmax, <span class="dv">1</span>)</span>
+<span id="cb8-2"><a href="#cb8-2" aria-hidden="true" tabindex="-1"></a>tmin_lag1 <span class="ot">&lt;-</span> <span class="fu">lag_matrix</span>(base<span class="sc">$</span>Tmin, <span class="dv">1</span>)</span>
+<span id="cb8-3"><a href="#cb8-3" aria-hidden="true" tabindex="-1"></a>precip_lag1  <span class="ot">&lt;-</span> <span class="fu">lag_matrix</span>(base<span class="sc">$</span>precip, <span class="dv">1</span>)</span>
+<span id="cb8-4"><a href="#cb8-4" aria-hidden="true" tabindex="-1"></a>ampmax_lag1 <span class="ot">&lt;-</span> <span class="fu">lag_matrix</span>(base<span class="sc">$</span>amp_max_mean, <span class="dv">1</span>)</span>
+<span id="cb8-5"><a href="#cb8-5" aria-hidden="true" tabindex="-1"></a>ampmin_lag1 <span class="ot">&lt;-</span> <span class="fu">lag_matrix</span>(base<span class="sc">$</span>amp_min_mean, <span class="dv">1</span>)</span>
+<span id="cb8-6"><a href="#cb8-6" aria-hidden="true" tabindex="-1"></a>aod_lag1 <span class="ot">&lt;-</span> <span class="fu">lag_matrix</span>(base<span class="sc">$</span>aerosol, <span class="dv">1</span>)</span>
+<span id="cb8-7"><a href="#cb8-7" aria-hidden="true" tabindex="-1"></a>hr_lag1 <span class="ot">&lt;-</span> <span class="fu">lag_matrix</span>(base<span class="sc">$</span>HR, <span class="dv">1</span>)</span></code><button title="Copiar al portapapeles" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</div>
+</section>
+</section>
+<section id="modelo-de-regresión-funcional" class="level1" data-number="2">
+<h1 data-number="2"><span class="header-section-number">2</span> Modelo de regresión funcional</h1>
+<section id="normal" class="level2" data-number="2.1">
+<h2 data-number="2.1" class="anchored" data-anchor-id="normal"><span class="header-section-number">2.1</span> Normal</h2>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb9"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb9-1"><a href="#cb9-1" aria-hidden="true" tabindex="-1"></a>mod_lag1_norm <span class="ot">&lt;-</span> <span class="fu">pffr</span>(Y <span class="sc">~</span> <span class="fu">ffpc</span>(tmax_lag1, <span class="at">npc =</span> <span class="dv">1</span>) <span class="sc">+</span> <span class="fu">ffpc</span>(tmin_lag1, <span class="at">npc =</span> <span class="dv">2</span>) <span class="sc">+</span> <span class="fu">ffpc</span>(precip_lag1, <span class="at">npc =</span> <span class="dv">1</span>) <span class="sc">+</span> <span class="fu">ffpc</span>(ampmax_lag1, <span class="at">npc =</span> <span class="dv">2</span>) <span class="sc">+</span> <span class="fu">ffpc</span>(ampmin_lag1, <span class="at">npc =</span> <span class="dv">2</span>) <span class="sc">+</span> <span class="fu">ffpc</span>(aod_lag1, <span class="at">npc =</span> <span class="dv">2</span>) <span class="sc">+</span> <span class="fu">ffpc</span>(hr_lag1, <span class="at">npc =</span> <span class="dv">2</span>), <span class="at">data =</span> base, <span class="at">yind =</span> <span class="dv">1</span><span class="sc">:</span><span class="dv">52</span>)</span>
+<span id="cb9-2"><a href="#cb9-2" aria-hidden="true" tabindex="-1"></a><span class="co"># ffpc internamente usa fpca.sc para los componentes</span></span></code><button title="Copiar al portapapeles" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</div>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb10"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb10-1"><a href="#cb10-1" aria-hidden="true" tabindex="-1"></a><span class="fu">summary</span>(mod_lag1_norm)</span></code><button title="Copiar al portapapeles" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>
+Family: gaussian 
+Link function: identity 
+
+Formula:
+Y ~ ffpc(tmax_lag1, npc = 1) + ffpc(tmin_lag1, npc = 2) + ffpc(precip_lag1, 
+    npc = 1) + ffpc(ampmax_lag1, npc = 2) + ffpc(ampmin_lag1, 
+    npc = 2) + ffpc(aod_lag1, npc = 2) + ffpc(hr_lag1, npc = 2)
+
+Constant coefficients:
+            Estimate Std. Error t value Pr(&gt;|t|)    
+(Intercept)  415.030      1.485   279.6   &lt;2e-16 ***
+---
+Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
+
+Smooth terms &amp; functional coefficients:
+                        edf Ref.df      F  p-value    
+Intercept(yindex)    14.755 19.000 59.414  &lt; 2e-16 ***
+ffpc(tmax_lag1,1)1    5.916  6.415  6.993  &lt; 2e-16 ***
+ffpc(tmin_lag1,2)1    5.318  5.901  6.045 4.89e-06 ***
+ffpc(tmin_lag1,2)2    6.019  6.528 20.469  &lt; 2e-16 ***
+ffpc(precip_lag1,1)1  6.162  6.725 20.441  &lt; 2e-16 ***
+ffpc(ampmax_lag1,2)1  6.525  6.980 11.779  &lt; 2e-16 ***
+ffpc(ampmax_lag1,2)2  5.710  6.328  4.491 0.000128 ***
+ffpc(ampmin_lag1,2)1  6.199  6.680 14.236  &lt; 2e-16 ***
+ffpc(ampmin_lag1,2)2  5.612  6.241  8.449  &lt; 2e-16 ***
+ffpc(aod_lag1,2)1     4.839  5.553 31.704  &lt; 2e-16 ***
+ffpc(aod_lag1,2)2     3.956  4.668  1.403 0.213685    
+ffpc(hr_lag1,2)1      5.276  5.883 16.399  &lt; 2e-16 ***
+ffpc(hr_lag1,2)2      5.211  5.834  9.977  &lt; 2e-16 ***
+---
+Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
+
+R-sq.(adj) =  0.697   Deviance explained =   72%
+-REML score = 5455.6  Scale est. = 1825      n = 1040 (20 x 52)</code></pre>
+</div>
+</div>
+<ul>
+<li><p>Se puede observar que, con un nivel de significancia del 5%, todos los componentes para todas las covariables tienen un efecto significativo sobre la respuesta funcional, con excepción del segundo componente para AOD.</p></li>
+<li><p>El modelo logra explicar un 70% de la variabilidad total (ajustado).</p></li>
+</ul>
+<section id="supuestos" class="level3" data-number="2.1.1">
+<h3 data-number="2.1.1" class="anchored" data-anchor-id="supuestos"><span class="header-section-number">2.1.1</span> Supuestos</h3>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb12"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb12-1"><a href="#cb12-1" aria-hidden="true" tabindex="-1"></a>residual <span class="ot">&lt;-</span> <span class="fu">residuals</span>(mod_lag1_norm)</span></code><button title="Copiar al portapapeles" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</div>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb13"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb13-1"><a href="#cb13-1" aria-hidden="true" tabindex="-1"></a><span class="fu">image.plot</span>(<span class="dv">1</span><span class="sc">:</span><span class="dv">52</span>, <span class="dv">1</span><span class="sc">:</span><span class="dv">20</span>, <span class="fu">t</span>(residual), </span>
+<span id="cb13-2"><a href="#cb13-2" aria-hidden="true" tabindex="-1"></a>           <span class="at">xlab =</span> <span class="st">"Semana"</span>, </span>
+<span id="cb13-3"><a href="#cb13-3" aria-hidden="true" tabindex="-1"></a>           <span class="at">ylab =</span> <span class="st">"Año"</span>,</span>
+<span id="cb13-4"><a href="#cb13-4" aria-hidden="true" tabindex="-1"></a>           <span class="at">axis.args =</span> <span class="fu">list</span>(<span class="at">at =</span> <span class="fu">c</span>(<span class="sc">-</span><span class="dv">100</span>, <span class="sc">-</span><span class="dv">50</span>, <span class="dv">0</span>, <span class="dv">50</span>, <span class="dv">100</span>)),</span>
+<span id="cb13-5"><a href="#cb13-5" aria-hidden="true" tabindex="-1"></a>           <span class="at">legend.shrink =</span> <span class="fl">0.8</span>,</span>
+<span id="cb13-6"><a href="#cb13-6" aria-hidden="true" tabindex="-1"></a>           <span class="at">legend.line =</span> <span class="sc">-</span><span class="fl">1.5</span>,<span class="at">legend.width  =</span>  <span class="fl">0.5</span>)</span>
+<span id="cb13-7"><a href="#cb13-7" aria-hidden="true" tabindex="-1"></a><span class="co"># Ideal es que este en cero. Hay residuales grandes. </span></span></code><button title="Copiar al portapapeles" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output-display">
+<div id="fig-supuesto1" class="quarto-figure quarto-figure-center anchored">
+<figure class="figure">
+<p><img src="Regresion-lag1_files/figure-html/fig-supuesto1-1.png" class="img-fluid figure-img" width="672"></p>
+<figcaption class="figure-caption">Figura&nbsp;1: Valores residuales para cada año a lo largo de las 52 semanas</figcaption>
+</figure>
+</div>
+</div>
+</div>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb14"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb14-1"><a href="#cb14-1" aria-hidden="true" tabindex="-1"></a>resid_vec <span class="ot">&lt;-</span> <span class="fu">as.vector</span>(residual)</span>
+<span id="cb14-2"><a href="#cb14-2" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb14-3"><a href="#cb14-3" aria-hidden="true" tabindex="-1"></a><span class="fu">qqnorm</span>(resid_vec, <span class="at">main =</span> <span class="st">""</span>)</span>
+<span id="cb14-4"><a href="#cb14-4" aria-hidden="true" tabindex="-1"></a><span class="fu">qqline</span>(resid_vec, <span class="at">col =</span> <span class="st">"red"</span>)</span></code><button title="Copiar al portapapeles" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output-display">
+<div id="fig-supuesto2" class="quarto-figure quarto-figure-center anchored">
+<figure class="figure">
+<p><img src="Regresion-lag1_files/figure-html/fig-supuesto2-1.png" class="img-fluid figure-img" width="672"></p>
+<figcaption class="figure-caption">Figura&nbsp;2: QQ-Plot de los residuos</figcaption>
+</figure>
+</div>
+</div>
+</div>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb15"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb15-1"><a href="#cb15-1" aria-hidden="true" tabindex="-1"></a><span class="co">#Plot the residual correlations</span></span>
+<span id="cb15-2"><a href="#cb15-2" aria-hidden="true" tabindex="-1"></a>corr_res <span class="ot">&lt;-</span> <span class="fu">cor</span>(residual)</span>
+<span id="cb15-3"><a href="#cb15-3" aria-hidden="true" tabindex="-1"></a><span class="fu">image.plot</span>(<span class="dv">1</span><span class="sc">:</span><span class="dv">52</span>, <span class="dv">1</span><span class="sc">:</span><span class="dv">52</span>, corr_res, </span>
+<span id="cb15-4"><a href="#cb15-4" aria-hidden="true" tabindex="-1"></a>           <span class="at">xlab =</span> <span class="st">"Semanas"</span>, </span>
+<span id="cb15-5"><a href="#cb15-5" aria-hidden="true" tabindex="-1"></a>           <span class="at">ylab =</span> <span class="st">"Semanas"</span>, </span>
+<span id="cb15-6"><a href="#cb15-6" aria-hidden="true" tabindex="-1"></a>           <span class="at">zlim =</span> <span class="fu">c</span>(<span class="sc">-</span><span class="dv">1</span>, <span class="dv">1</span>),  </span>
+<span id="cb15-7"><a href="#cb15-7" aria-hidden="true" tabindex="-1"></a>           <span class="at">axis.args =</span> <span class="fu">list</span>(<span class="at">at =</span> <span class="fu">seq</span>(<span class="sc">-</span><span class="dv">1</span>, <span class="dv">1</span>, <span class="at">by =</span> <span class="fl">0.2</span>)),</span>
+<span id="cb15-8"><a href="#cb15-8" aria-hidden="true" tabindex="-1"></a>           <span class="at">legend.shrink =</span> <span class="fl">0.8</span>,</span>
+<span id="cb15-9"><a href="#cb15-9" aria-hidden="true" tabindex="-1"></a>           <span class="at">legend.line =</span> <span class="sc">-</span><span class="fl">1.5</span>, </span>
+<span id="cb15-10"><a href="#cb15-10" aria-hidden="true" tabindex="-1"></a>           <span class="at">legend.width =</span> <span class="fl">0.5</span>)</span></code><button title="Copiar al portapapeles" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output-display">
+<div id="fig-supuesto3" class="quarto-figure quarto-figure-center anchored">
+<figure class="figure">
+<p><img src="Regresion-lag1_files/figure-html/fig-supuesto3-1.png" class="img-fluid figure-img" width="672"></p>
+<figcaption class="figure-caption">Figura&nbsp;3: Correlación entre los residuos</figcaption>
+</figure>
+</div>
+</div>
+</div>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb16"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb16-1"><a href="#cb16-1" aria-hidden="true" tabindex="-1"></a>t <span class="ot">=</span> <span class="dv">52</span></span>
+<span id="cb16-2"><a href="#cb16-2" aria-hidden="true" tabindex="-1"></a>res_df <span class="ot">&lt;-</span> <span class="fu">data.frame</span>(<span class="at">id =</span> <span class="fu">rep</span>(<span class="dv">1</span><span class="sc">:</span><span class="fu">nrow</span>(residual), <span class="at">each =</span> <span class="fu">ncol</span>(residual)),</span>
+<span id="cb16-3"><a href="#cb16-3" aria-hidden="true" tabindex="-1"></a>                     <span class="at">week =</span> <span class="fu">rep</span>(<span class="dv">1</span><span class="sc">:</span>t, <span class="at">times =</span> <span class="fu">nrow</span>(residual)),</span>
+<span id="cb16-4"><a href="#cb16-4" aria-hidden="true" tabindex="-1"></a>                     <span class="at">residual =</span> <span class="fu">as.vector</span>(<span class="fu">t</span>(residual)))</span>
+<span id="cb16-5"><a href="#cb16-5" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb16-6"><a href="#cb16-6" aria-hidden="true" tabindex="-1"></a><span class="fu">ggplot</span>(res_df, <span class="fu">aes</span>(<span class="at">x =</span> week, <span class="at">y =</span> residual, <span class="at">group =</span> id)) <span class="sc">+</span> <span class="fu">geom_line</span>(<span class="at">alpha =</span> <span class="fl">0.1</span>) <span class="sc">+</span> <span class="fu">labs</span>(<span class="at">x =</span> <span class="st">"Semana"</span>, <span class="at">y =</span> <span class="st">"Residuales"</span>) <span class="sc">+</span> <span class="fu">theme_minimal</span>()</span></code><button title="Copiar al portapapeles" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output-display">
+<div id="fig-supuesto5" class="quarto-figure quarto-figure-center anchored">
+<figure class="figure">
+<p><img src="Regresion-lag1_files/figure-html/fig-supuesto5-1.png" class="img-fluid figure-img" width="672"></p>
+<figcaption class="figure-caption">Figura&nbsp;4: Residuales funcionales estimados</figcaption>
+</figure>
+</div>
+</div>
+</div>
+</section>
+</section>
+<section id="poisson" class="level2" data-number="2.2">
+<h2 data-number="2.2" class="anchored" data-anchor-id="poisson"><span class="header-section-number">2.2</span> Poisson</h2>
+<p>Segundo, se ajustó un modelo con distribución Poisson. Se incluyó un offset de población con el fin de considerar los cambios en el tamaño de la población durante el período de estudio.</p>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb17"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb17-1"><a href="#cb17-1" aria-hidden="true" tabindex="-1"></a>mod_lag1_pois <span class="ot">&lt;-</span> <span class="fu">pffr</span>(Y <span class="sc">~</span> <span class="fu">ffpc</span>(tmax_lag1, <span class="at">npc =</span> <span class="dv">1</span>) <span class="sc">+</span> <span class="fu">ffpc</span>(tmin_lag1, <span class="at">npc =</span> <span class="dv">2</span>) <span class="sc">+</span> <span class="fu">ffpc</span>(precip_lag1, <span class="at">npc =</span> <span class="dv">1</span>) <span class="sc">+</span> <span class="fu">ffpc</span>(ampmax_lag1, <span class="at">npc =</span> <span class="dv">2</span>) <span class="sc">+</span> <span class="fu">ffpc</span>(ampmin_lag1, <span class="at">npc =</span> <span class="dv">2</span>) <span class="sc">+</span> <span class="fu">ffpc</span>(aod_lag1, <span class="at">npc =</span> <span class="dv">2</span>) <span class="sc">+</span> <span class="fu">ffpc</span>(hr_lag1, <span class="at">npc =</span> <span class="dv">2</span>) <span class="sc">+</span> <span class="fu">offset</span>(<span class="fu">log</span>(population)), <span class="at">family =</span> <span class="fu">poisson</span>(<span class="at">link =</span> <span class="st">"log"</span>), <span class="at">data =</span> base, <span class="at">yind =</span> <span class="dv">1</span><span class="sc">:</span><span class="dv">52</span>)</span></code><button title="Copiar al portapapeles" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</div>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb18"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb18-1"><a href="#cb18-1" aria-hidden="true" tabindex="-1"></a><span class="fu">summary</span>(mod_lag1_pois)</span></code><button title="Copiar al portapapeles" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>
+Family: poisson 
+Link function: log 
+
+Formula:
+Y ~ ffpc(tmax_lag1, npc = 1) + ffpc(tmin_lag1, npc = 2) + ffpc(precip_lag1, 
+    npc = 1) + ffpc(ampmax_lag1, npc = 2) + ffpc(ampmin_lag1, 
+    npc = 2) + ffpc(aod_lag1, npc = 2) + ffpc(hr_lag1, npc = 2) + 
+    offset(log(population))
+
+Constant coefficients:
+            Estimate Std. Error z value Pr(&gt;|z|)    
+(Intercept)  6.01598    0.00173    3477   &lt;2e-16 ***
+---
+Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
+
+Smooth terms &amp; functional coefficients:
+                        edf Ref.df  Chi.sq p-value    
+Intercept(yindex)    18.210 19.000 4679.92  &lt;2e-16 ***
+ffpc(tmax_lag1,1)1    7.365  7.538  311.77  &lt;2e-16 ***
+ffpc(tmin_lag1,2)1    6.957  7.252  284.33  &lt;2e-16 ***
+ffpc(tmin_lag1,2)2    7.589  7.900  587.82  &lt;2e-16 ***
+ffpc(precip_lag1,1)1  7.418  7.741  661.40  &lt;2e-16 ***
+ffpc(ampmax_lag1,2)1  7.336  7.626  427.94  &lt;2e-16 ***
+ffpc(ampmax_lag1,2)2  7.115  7.509   98.18  &lt;2e-16 ***
+ffpc(ampmin_lag1,2)1  6.407  6.886  382.87  &lt;2e-16 ***
+ffpc(ampmin_lag1,2)2  6.269  6.749  218.26  &lt;2e-16 ***
+ffpc(aod_lag1,2)1     7.254  7.723  902.57  &lt;2e-16 ***
+ffpc(aod_lag1,2)2     6.847  7.350  136.47  &lt;2e-16 ***
+ffpc(hr_lag1,2)1      6.603  7.080  504.38  &lt;2e-16 ***
+ffpc(hr_lag1,2)2      6.660  7.206  240.22  &lt;2e-16 ***
+---
+Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
+
+R-sq.(adj) =  0.722   Deviance explained = 75.4%
+-REML score =   6212  Scale est. = 1         n = 1040 (20 x 52)</code></pre>
+</div>
+</div>
+<ul>
+<li><p>Se puede observar que, con un nivel de significancia del 5%, todos los componentes para todas las covariables tienen un efecto significativo sobre la respuesta funcional.</p></li>
+<li><p>El modelo logra explicar un 72% de la variabilidad total (ajustado).</p></li>
+</ul>
+<section id="supuestos-1" class="level3" data-number="2.2.1">
+<h3 data-number="2.2.1" class="anchored" data-anchor-id="supuestos-1"><span class="header-section-number">2.2.1</span> Supuestos</h3>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb20"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb20-1"><a href="#cb20-1" aria-hidden="true" tabindex="-1"></a>residual <span class="ot">&lt;-</span> <span class="fu">residuals</span>(mod_lag1_pois)</span>
+<span id="cb20-2"><a href="#cb20-2" aria-hidden="true" tabindex="-1"></a>yhat <span class="ot">&lt;-</span> <span class="fu">predict</span>(mod_lag1_pois, <span class="at">type =</span> <span class="st">"response"</span>)</span></code><button title="Copiar al portapapeles" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</div>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb21"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb21-1"><a href="#cb21-1" aria-hidden="true" tabindex="-1"></a><span class="fu">plot</span>(<span class="at">y =</span> <span class="fu">log</span>(<span class="fu">rowMeans</span>(residual)<span class="sc">^</span><span class="dv">2</span>), <span class="at">x =</span> <span class="fu">log</span>(<span class="fu">rowMeans</span>(yhat)), <span class="at">pch =</span> <span class="dv">16</span>)</span>
+<span id="cb21-2"><a href="#cb21-2" aria-hidden="true" tabindex="-1"></a><span class="fu">abline</span>(<span class="fu">lm</span>(<span class="fu">log</span>(<span class="fu">rowMeans</span>(residual)<span class="sc">^</span><span class="dv">2</span>)<span class="sc">~</span><span class="fu">log</span>(<span class="fu">rowMeans</span>(yhat))), <span class="at">col =</span> <span class="st">"red"</span>)</span></code><button title="Copiar al portapapeles" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output-display">
+<div id="fig-supuesto_pois1" class="quarto-figure quarto-figure-center anchored">
+<figure class="figure">
+<p><img src="Regresion-lag1_files/figure-html/fig-supuesto_pois1-1.png" class="img-fluid figure-img" width="672"></p>
+<figcaption class="figure-caption">Figura&nbsp;5: Logaritmo de los residuales vs logaritmo de los valores predichos</figcaption>
+</figure>
+</div>
+</div>
+</div>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb22"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb22-1"><a href="#cb22-1" aria-hidden="true" tabindex="-1"></a>res <span class="ot">&lt;-</span> <span class="fu">residuals</span>(mod_lag1_pois, <span class="at">type =</span> <span class="st">"pearson"</span>)</span>
+<span id="cb22-2"><a href="#cb22-2" aria-hidden="true" tabindex="-1"></a>rdf <span class="ot">&lt;-</span> <span class="fu">df.residual</span>(mod_lag1_pois)           </span>
+<span id="cb22-3"><a href="#cb22-3" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb22-4"><a href="#cb22-4" aria-hidden="true" tabindex="-1"></a>phi <span class="ot">&lt;-</span> <span class="fu">sum</span>(res<span class="sc">^</span><span class="dv">2</span>) <span class="sc">/</span> rdf</span>
+<span id="cb22-5"><a href="#cb22-5" aria-hidden="true" tabindex="-1"></a>phi</span></code><button title="Copiar al portapapeles" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>[1] 3.809416</code></pre>
+</div>
+</div>
+</section>
+</section>
+<section id="quasi-poisson" class="level2" data-number="2.3">
+<h2 data-number="2.3" class="anchored" data-anchor-id="quasi-poisson"><span class="header-section-number">2.3</span> Quasi-Poisson</h2>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb24"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb24-1"><a href="#cb24-1" aria-hidden="true" tabindex="-1"></a>mod_lag1_quasi <span class="ot">&lt;-</span> <span class="fu">pffr</span>(Y <span class="sc">~</span> <span class="fu">ffpc</span>(tmax_lag1, <span class="at">npc =</span> <span class="dv">1</span>) <span class="sc">+</span> <span class="fu">ffpc</span>(tmin_lag1, <span class="at">npc =</span> <span class="dv">2</span>) <span class="sc">+</span> <span class="fu">ffpc</span>(precip_lag1, <span class="at">npc =</span> <span class="dv">1</span>) <span class="sc">+</span> <span class="fu">ffpc</span>(ampmax_lag1, <span class="at">npc =</span> <span class="dv">2</span>) <span class="sc">+</span> <span class="fu">ffpc</span>(ampmin_lag1, <span class="at">npc =</span> <span class="dv">2</span>) <span class="sc">+</span> <span class="fu">ffpc</span>(aod_lag1, <span class="at">npc =</span> <span class="dv">2</span>) <span class="sc">+</span> <span class="fu">ffpc</span>(hr_lag1, <span class="at">npc =</span> <span class="dv">2</span>) <span class="sc">+</span> <span class="fu">offset</span>(<span class="fu">log</span>(population)), <span class="at">family =</span> <span class="fu">quasipoisson</span>(<span class="at">link =</span> <span class="st">"log"</span>), <span class="at">data =</span> base, <span class="at">yind =</span> <span class="dv">1</span><span class="sc">:</span><span class="dv">52</span>, <span class="at">method =</span> <span class="st">"REML"</span>)</span></code><button title="Copiar al portapapeles" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</div>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb25"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb25-1"><a href="#cb25-1" aria-hidden="true" tabindex="-1"></a><span class="fu">summary</span>(mod_lag1_quasi)</span></code><button title="Copiar al portapapeles" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>
+Family: quasipoisson 
+Link function: log 
+
+Formula:
+Y ~ ffpc(tmax_lag1, npc = 1) + ffpc(tmin_lag1, npc = 2) + ffpc(precip_lag1, 
+    npc = 1) + ffpc(ampmax_lag1, npc = 2) + ffpc(ampmin_lag1, 
+    npc = 2) + ffpc(aod_lag1, npc = 2) + ffpc(hr_lag1, npc = 2) + 
+    offset(log(population))
+
+Constant coefficients:
+            Estimate Std. Error t value Pr(&gt;|t|)    
+(Intercept) 6.016531   0.003494    1722   &lt;2e-16 ***
+---
+Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
+
+Smooth terms &amp; functional coefficients:
+                        edf Ref.df      F  p-value    
+Intercept(yindex)    15.052 19.000 62.954  &lt; 2e-16 ***
+ffpc(tmax_lag1,1)1    5.924  6.423  6.941 1.20e-07 ***
+ffpc(tmin_lag1,2)1    5.368  5.946  6.013 4.57e-06 ***
+ffpc(tmin_lag1,2)2    6.015  6.529 21.637  &lt; 2e-16 ***
+ffpc(precip_lag1,1)1  5.995  6.551 20.944  &lt; 2e-16 ***
+ffpc(ampmax_lag1,2)1  6.515  6.980 10.969  &lt; 2e-16 ***
+ffpc(ampmax_lag1,2)2  5.698  6.310  4.307 0.000235 ***
+ffpc(ampmin_lag1,2)1  6.041  6.544 13.778  &lt; 2e-16 ***
+ffpc(ampmin_lag1,2)2  5.458  6.099  8.734  &lt; 2e-16 ***
+ffpc(aod_lag1,2)1     4.926  5.624 34.960  &lt; 2e-16 ***
+ffpc(aod_lag1,2)2     4.093  4.796  1.724 0.123660    
+ffpc(hr_lag1,2)1      5.101  5.719 17.617  &lt; 2e-16 ***
+ffpc(hr_lag1,2)2      5.076  5.719  9.878  &lt; 2e-16 ***
+---
+Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
+
+R-sq.(adj) =  0.702   Deviance explained = 73.1%
+-REML score = 1404.8  Scale est. = 4.0854    n = 1040 (20 x 52)</code></pre>
+</div>
+</div>
+<ul>
+<li><p>Se puede observar que, con un nivel de significancia del 5%, todos los componentes para todas las covariables tienen un efecto significativo sobre la respuesta funcional, con excepción del segundo componente para AOD.</p></li>
+<li><p>El modelo logra explicar un 70% de la variabilidad total (ajustado).</p></li>
+</ul>
+<section id="supuestos-2" class="level3" data-number="2.3.1">
+<h3 data-number="2.3.1" class="anchored" data-anchor-id="supuestos-2"><span class="header-section-number">2.3.1</span> Supuestos</h3>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb27"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb27-1"><a href="#cb27-1" aria-hidden="true" tabindex="-1"></a>res2 <span class="ot">&lt;-</span> <span class="fu">residuals</span>(mod_lag1_quasi)</span></code><button title="Copiar al portapapeles" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</div>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb28"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb28-1"><a href="#cb28-1" aria-hidden="true" tabindex="-1"></a><span class="fu">image.plot</span>(<span class="dv">1</span><span class="sc">:</span><span class="dv">52</span>, <span class="dv">1</span><span class="sc">:</span><span class="dv">20</span>, <span class="fu">t</span>(res2), </span>
+<span id="cb28-2"><a href="#cb28-2" aria-hidden="true" tabindex="-1"></a>           <span class="at">xlab =</span> <span class="st">"Semana"</span>, </span>
+<span id="cb28-3"><a href="#cb28-3" aria-hidden="true" tabindex="-1"></a>           <span class="at">ylab =</span> <span class="st">"Año"</span>,</span>
+<span id="cb28-4"><a href="#cb28-4" aria-hidden="true" tabindex="-1"></a>           <span class="at">zlim =</span> <span class="fu">c</span>(<span class="sc">-</span><span class="dv">7</span>,<span class="dv">7</span>),</span>
+<span id="cb28-5"><a href="#cb28-5" aria-hidden="true" tabindex="-1"></a>           <span class="at">axis.args =</span> <span class="fu">list</span>(<span class="at">at =</span> <span class="fu">seq</span>(<span class="sc">-</span><span class="dv">7</span>,<span class="dv">7</span>, <span class="at">by =</span> <span class="dv">1</span>)),</span>
+<span id="cb28-6"><a href="#cb28-6" aria-hidden="true" tabindex="-1"></a>           <span class="at">legend.shrink =</span> <span class="fl">0.8</span>,</span>
+<span id="cb28-7"><a href="#cb28-7" aria-hidden="true" tabindex="-1"></a>           <span class="at">legend.line =</span> <span class="sc">-</span><span class="fl">1.5</span>,<span class="at">legend.width  =</span>  <span class="fl">0.5</span>)</span></code><button title="Copiar al portapapeles" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output-display">
+<div id="fig-supuesto_quasi1" class="quarto-figure quarto-figure-center anchored">
+<figure class="figure">
+<p><img src="Regresion-lag1_files/figure-html/fig-supuesto_quasi1-1.png" class="img-fluid figure-img" width="672"></p>
+<figcaption class="figure-caption">Figura&nbsp;6: Valores residuales para cada año a lo largo de las 52 semanas</figcaption>
+</figure>
+</div>
+</div>
+</div>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb29"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb29-1"><a href="#cb29-1" aria-hidden="true" tabindex="-1"></a>corr_res2 <span class="ot">&lt;-</span> <span class="fu">cor</span>(res2)</span>
+<span id="cb29-2"><a href="#cb29-2" aria-hidden="true" tabindex="-1"></a><span class="fu">image.plot</span>(<span class="dv">1</span><span class="sc">:</span><span class="dv">52</span>, <span class="dv">1</span><span class="sc">:</span><span class="dv">52</span>, corr_res2, </span>
+<span id="cb29-3"><a href="#cb29-3" aria-hidden="true" tabindex="-1"></a>           <span class="at">xlab =</span> <span class="st">"Semanas"</span>, </span>
+<span id="cb29-4"><a href="#cb29-4" aria-hidden="true" tabindex="-1"></a>           <span class="at">ylab =</span> <span class="st">"Semanas"</span>, </span>
+<span id="cb29-5"><a href="#cb29-5" aria-hidden="true" tabindex="-1"></a>           <span class="at">zlim =</span> <span class="fu">c</span>(<span class="sc">-</span><span class="dv">1</span>, <span class="dv">1</span>),  </span>
+<span id="cb29-6"><a href="#cb29-6" aria-hidden="true" tabindex="-1"></a>           <span class="at">axis.args =</span> <span class="fu">list</span>(<span class="at">at =</span> <span class="fu">seq</span>(<span class="sc">-</span><span class="dv">1</span>, <span class="dv">1</span>, <span class="at">by =</span> <span class="fl">0.2</span>)),</span>
+<span id="cb29-7"><a href="#cb29-7" aria-hidden="true" tabindex="-1"></a>           <span class="at">legend.shrink =</span> <span class="fl">0.8</span>,</span>
+<span id="cb29-8"><a href="#cb29-8" aria-hidden="true" tabindex="-1"></a>           <span class="at">legend.line =</span> <span class="sc">-</span><span class="fl">1.5</span>, </span>
+<span id="cb29-9"><a href="#cb29-9" aria-hidden="true" tabindex="-1"></a>           <span class="at">legend.width =</span> <span class="fl">0.5</span>)</span></code><button title="Copiar al portapapeles" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output-display">
+<div id="fig-supuesto_quasi2" class="quarto-figure quarto-figure-center anchored">
+<figure class="figure">
+<p><img src="Regresion-lag1_files/figure-html/fig-supuesto_quasi2-1.png" class="img-fluid figure-img" width="672"></p>
+<figcaption class="figure-caption">Figura&nbsp;7: Correlación entre los residuos</figcaption>
+</figure>
+</div>
+</div>
+</div>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb30"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb30-1"><a href="#cb30-1" aria-hidden="true" tabindex="-1"></a>res_df2 <span class="ot">&lt;-</span> <span class="fu">data.frame</span>(<span class="at">id =</span> <span class="fu">rep</span>(<span class="dv">1</span><span class="sc">:</span><span class="fu">nrow</span>(res2), <span class="at">each =</span> <span class="fu">ncol</span>(res2)),</span>
+<span id="cb30-2"><a href="#cb30-2" aria-hidden="true" tabindex="-1"></a>                     <span class="at">week =</span> <span class="fu">rep</span>(<span class="dv">1</span><span class="sc">:</span>t, <span class="at">times =</span> <span class="fu">nrow</span>(res2)),</span>
+<span id="cb30-3"><a href="#cb30-3" aria-hidden="true" tabindex="-1"></a>                     <span class="at">residual =</span> <span class="fu">as.vector</span>(<span class="fu">t</span>(res2)))</span>
+<span id="cb30-4"><a href="#cb30-4" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb30-5"><a href="#cb30-5" aria-hidden="true" tabindex="-1"></a><span class="fu">ggplot</span>(res_df2, <span class="fu">aes</span>(<span class="at">x =</span> week, <span class="at">y =</span> residual, <span class="at">group =</span> id)) <span class="sc">+</span> <span class="fu">geom_line</span>(<span class="at">alpha =</span> <span class="fl">0.1</span>) <span class="sc">+</span> <span class="fu">labs</span>(<span class="at">x =</span> <span class="st">"Semana"</span>, <span class="at">y =</span> <span class="st">"Residuales"</span>) <span class="sc">+</span> <span class="fu">theme_minimal</span>()</span></code><button title="Copiar al portapapeles" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output-display">
+<div id="fig-supuesto_quasi3" class="quarto-figure quarto-figure-center anchored">
+<figure class="figure">
+<p><img src="Regresion-lag1_files/figure-html/fig-supuesto_quasi3-1.png" class="img-fluid figure-img" width="672"></p>
+<figcaption class="figure-caption">Figura&nbsp;8: Residuales funcionales estimados</figcaption>
+</figure>
+</div>
+</div>
+</div>
+</section>
+</section>
+<section id="binomial-negativa" class="level2" data-number="2.4">
+<h2 data-number="2.4" class="anchored" data-anchor-id="binomial-negativa"><span class="header-section-number">2.4</span> Binomial Negativa</h2>
+<p>El modelo con distribución binomial negativa es otra forma de tomar en cuenta la sobredispersión presente en los datos. En este modelo también se incluye un offset de población.</p>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb31"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb31-1"><a href="#cb31-1" aria-hidden="true" tabindex="-1"></a>mod_lag1_bn <span class="ot">&lt;-</span> <span class="fu">pffr</span>(Y <span class="sc">~</span> <span class="fu">ffpc</span>(tmax_lag1, <span class="at">npc =</span> <span class="dv">1</span>) <span class="sc">+</span> <span class="fu">ffpc</span>(tmin_lag1, <span class="at">npc =</span> <span class="dv">2</span>) <span class="sc">+</span> <span class="fu">ffpc</span>(precip_lag1, <span class="at">npc =</span> <span class="dv">1</span>) <span class="sc">+</span> <span class="fu">ffpc</span>(ampmax_lag1, <span class="at">npc =</span> <span class="dv">2</span>) <span class="sc">+</span> <span class="fu">ffpc</span>(ampmin_lag1, <span class="at">npc =</span> <span class="dv">2</span>) <span class="sc">+</span> <span class="fu">ffpc</span>(aod_lag1, <span class="at">npc =</span> <span class="dv">2</span>) <span class="sc">+</span> <span class="fu">ffpc</span>(hr_lag1, <span class="at">npc =</span> <span class="dv">2</span>) <span class="sc">+</span> <span class="fu">offset</span>(<span class="fu">log</span>(population)), <span class="at">family =</span> <span class="fu">nb</span>(), <span class="at">data =</span> base, <span class="at">yind =</span> <span class="dv">1</span><span class="sc">:</span><span class="dv">52</span>)</span></code><button title="Copiar al portapapeles" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</div>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb32"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb32-1"><a href="#cb32-1" aria-hidden="true" tabindex="-1"></a><span class="fu">summary</span>(mod_lag1_bn)</span></code><button title="Copiar al portapapeles" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>
+Family: Negative Binomial(137.783) 
+Link function: log 
+
+Formula:
+Y ~ ffpc(tmax_lag1, npc = 1) + ffpc(tmin_lag1, npc = 2) + ffpc(precip_lag1, 
+    npc = 1) + ffpc(ampmax_lag1, npc = 2) + ffpc(ampmin_lag1, 
+    npc = 2) + ffpc(aod_lag1, npc = 2) + ffpc(hr_lag1, npc = 2) + 
+    offset(log(population))
+
+Constant coefficients:
+            Estimate Std. Error z value Pr(&gt;|z|)    
+(Intercept) 6.016901   0.003428    1755   &lt;2e-16 ***
+---
+Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
+
+Smooth terms &amp; functional coefficients:
+                        edf Ref.df   Chi.sq p-value    
+Intercept(yindex)    15.176 19.000 1225.341 &lt; 2e-16 ***
+ffpc(tmax_lag1,1)1    5.721  6.248   38.324 &lt; 2e-16 ***
+ffpc(tmin_lag1,2)1    5.241  5.830   30.081 3.4e-05 ***
+ffpc(tmin_lag1,2)2    5.919  6.438  131.865 &lt; 2e-16 ***
+ffpc(precip_lag1,1)1  6.061  6.621  144.807 &lt; 2e-16 ***
+ffpc(ampmax_lag1,2)1  6.511  6.981   69.425 &lt; 2e-16 ***
+ffpc(ampmax_lag1,2)2  5.666  6.283   27.104 0.00019 ***
+ffpc(ampmin_lag1,2)1  6.062  6.565   90.188 &lt; 2e-16 ***
+ffpc(ampmin_lag1,2)2  5.439  6.084   49.964 &lt; 2e-16 ***
+ffpc(aod_lag1,2)1     4.869  5.578  210.749 &lt; 2e-16 ***
+ffpc(aod_lag1,2)2     4.025  4.734    9.819 0.06800 .  
+ffpc(hr_lag1,2)1      5.150  5.768  106.267 &lt; 2e-16 ***
+ffpc(hr_lag1,2)2      5.105  5.746   58.845 &lt; 2e-16 ***
+---
+Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
+
+R-sq.(adj) =  0.698   Deviance explained = 73.2%
+-REML score = 5477.4  Scale est. = 1         n = 1040 (20 x 52)</code></pre>
+</div>
+</div>
+<ul>
+<li><p>Se puede observar que, con un nivel de significancia del 5%, todos los componentes para todas las covariables tienen un efecto significativo sobre la respuesta funcional, con excepción del segundo componente para AOD.</p></li>
+<li><p>El modelo logra explicar un 70% de la variabilidad total (ajustado).</p></li>
+</ul>
+<section id="supuestos-3" class="level3" data-number="2.4.1">
+<h3 data-number="2.4.1" class="anchored" data-anchor-id="supuestos-3"><span class="header-section-number">2.4.1</span> Supuestos</h3>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb34"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb34-1"><a href="#cb34-1" aria-hidden="true" tabindex="-1"></a>residual <span class="ot">&lt;-</span> <span class="fu">residuals</span>(mod_lag1_bn)</span></code><button title="Copiar al portapapeles" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</div>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb35"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb35-1"><a href="#cb35-1" aria-hidden="true" tabindex="-1"></a><span class="fu">image.plot</span>(<span class="dv">1</span><span class="sc">:</span><span class="dv">52</span>, <span class="dv">1</span><span class="sc">:</span><span class="dv">20</span>, <span class="fu">t</span>(residual), </span>
+<span id="cb35-2"><a href="#cb35-2" aria-hidden="true" tabindex="-1"></a>           <span class="at">xlab =</span> <span class="st">"Semana"</span>, </span>
+<span id="cb35-3"><a href="#cb35-3" aria-hidden="true" tabindex="-1"></a>           <span class="at">ylab =</span> <span class="st">"Año"</span>,</span>
+<span id="cb35-4"><a href="#cb35-4" aria-hidden="true" tabindex="-1"></a>           <span class="at">zlim =</span> <span class="fu">c</span>(<span class="sc">-</span><span class="dv">4</span>,<span class="dv">4</span>),</span>
+<span id="cb35-5"><a href="#cb35-5" aria-hidden="true" tabindex="-1"></a>           <span class="at">axis.args =</span> <span class="fu">list</span>(<span class="at">at =</span> <span class="fu">seq</span>(<span class="sc">-</span><span class="dv">4</span>,<span class="dv">4</span>, <span class="at">by =</span> <span class="dv">1</span>)),</span>
+<span id="cb35-6"><a href="#cb35-6" aria-hidden="true" tabindex="-1"></a>           <span class="at">legend.shrink =</span> <span class="fl">0.8</span>,</span>
+<span id="cb35-7"><a href="#cb35-7" aria-hidden="true" tabindex="-1"></a>           <span class="at">legend.line =</span> <span class="sc">-</span><span class="fl">1.5</span>,<span class="at">legend.width  =</span>  <span class="fl">0.5</span>)</span></code><button title="Copiar al portapapeles" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output-display">
+<div id="fig-supuesto_bn1" class="quarto-figure quarto-figure-center anchored">
+<figure class="figure">
+<p><img src="Regresion-lag1_files/figure-html/fig-supuesto_bn1-1.png" class="img-fluid figure-img" width="672"></p>
+<figcaption class="figure-caption">Figura&nbsp;9: Valores residuales para cada año a lo largo de las 52 semanas</figcaption>
+</figure>
+</div>
+</div>
+</div>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb36"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb36-1"><a href="#cb36-1" aria-hidden="true" tabindex="-1"></a>corr_res <span class="ot">&lt;-</span> <span class="fu">cor</span>(residual)</span>
+<span id="cb36-2"><a href="#cb36-2" aria-hidden="true" tabindex="-1"></a><span class="fu">image.plot</span>(<span class="dv">1</span><span class="sc">:</span><span class="dv">52</span>, <span class="dv">1</span><span class="sc">:</span><span class="dv">52</span>, corr_res, </span>
+<span id="cb36-3"><a href="#cb36-3" aria-hidden="true" tabindex="-1"></a>           <span class="at">xlab =</span> <span class="st">"Semanas"</span>, </span>
+<span id="cb36-4"><a href="#cb36-4" aria-hidden="true" tabindex="-1"></a>           <span class="at">ylab =</span> <span class="st">"Semanas"</span>, </span>
+<span id="cb36-5"><a href="#cb36-5" aria-hidden="true" tabindex="-1"></a>           <span class="at">zlim =</span> <span class="fu">c</span>(<span class="sc">-</span><span class="dv">1</span>, <span class="dv">1</span>),  </span>
+<span id="cb36-6"><a href="#cb36-6" aria-hidden="true" tabindex="-1"></a>           <span class="at">axis.args =</span> <span class="fu">list</span>(<span class="at">at =</span> <span class="fu">seq</span>(<span class="sc">-</span><span class="dv">1</span>, <span class="dv">1</span>, <span class="at">by =</span> <span class="fl">0.2</span>)),</span>
+<span id="cb36-7"><a href="#cb36-7" aria-hidden="true" tabindex="-1"></a>           <span class="at">legend.shrink =</span> <span class="fl">0.8</span>,</span>
+<span id="cb36-8"><a href="#cb36-8" aria-hidden="true" tabindex="-1"></a>           <span class="at">legend.line =</span> <span class="sc">-</span><span class="fl">1.5</span>, </span>
+<span id="cb36-9"><a href="#cb36-9" aria-hidden="true" tabindex="-1"></a>           <span class="at">legend.width =</span> <span class="fl">0.5</span>)</span></code><button title="Copiar al portapapeles" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output-display">
+<div id="fig-supuesto_bn2" class="quarto-figure quarto-figure-center anchored">
+<figure class="figure">
+<p><img src="Regresion-lag1_files/figure-html/fig-supuesto_bn2-1.png" class="img-fluid figure-img" width="672"></p>
+<figcaption class="figure-caption">Figura&nbsp;10: Correlación entre los residuos</figcaption>
+</figure>
+</div>
+</div>
+</div>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb37"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb37-1"><a href="#cb37-1" aria-hidden="true" tabindex="-1"></a>t <span class="ot">=</span> <span class="dv">52</span></span>
+<span id="cb37-2"><a href="#cb37-2" aria-hidden="true" tabindex="-1"></a>res_df <span class="ot">&lt;-</span> <span class="fu">data.frame</span>(<span class="at">id =</span> <span class="fu">rep</span>(<span class="dv">1</span><span class="sc">:</span><span class="fu">nrow</span>(residual), <span class="at">each =</span> <span class="fu">ncol</span>(residual)),</span>
+<span id="cb37-3"><a href="#cb37-3" aria-hidden="true" tabindex="-1"></a>                     <span class="at">week =</span> <span class="fu">rep</span>(<span class="dv">1</span><span class="sc">:</span>t, <span class="at">times =</span> <span class="fu">nrow</span>(residual)),</span>
+<span id="cb37-4"><a href="#cb37-4" aria-hidden="true" tabindex="-1"></a>                     <span class="at">residual =</span> <span class="fu">as.vector</span>(<span class="fu">t</span>(residual)))</span>
+<span id="cb37-5"><a href="#cb37-5" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb37-6"><a href="#cb37-6" aria-hidden="true" tabindex="-1"></a><span class="fu">ggplot</span>(res_df, <span class="fu">aes</span>(<span class="at">x =</span> week, <span class="at">y =</span> residual, <span class="at">group =</span> id)) <span class="sc">+</span> <span class="fu">geom_line</span>(<span class="at">alpha =</span> <span class="fl">0.1</span>) <span class="sc">+</span> <span class="fu">labs</span>(<span class="at">x =</span> <span class="st">"Semana"</span>, <span class="at">y =</span> <span class="st">"Residuales"</span>) <span class="sc">+</span> <span class="fu">theme_minimal</span>()</span></code><button title="Copiar al portapapeles" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output-display">
+<div id="fig-supuesto_bn3" class="quarto-figure quarto-figure-center anchored">
+<figure class="figure">
+<p><img src="Regresion-lag1_files/figure-html/fig-supuesto_bn3-1.png" class="img-fluid figure-img" width="672"></p>
+<figcaption class="figure-caption">Figura&nbsp;11: Residuales funcionales estimados</figcaption>
+</figure>
+</div>
+</div>
+</div>
+</section>
+</section>
+</section>
+<section id="modelo-final" class="level1" data-number="3">
+<h1 data-number="3"><span class="header-section-number">3</span> Modelo final</h1>
+<p>Para la selección del modelo final se consideró el rendimiento de cada uno, utilizando métricas como el error cuadrático medio (MSE, por sus siglas en inglés), el error absoluto medio (MAE), devianza y el coeficiente de determinación ajustado, además del grado en que cada modelo cumple con sus supuestos. En la tabla se puede observar dichas métricas para cada modelo.</p>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb38"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb38-1"><a href="#cb38-1" aria-hidden="true" tabindex="-1"></a><span class="co"># Normal</span></span>
+<span id="cb38-2"><a href="#cb38-2" aria-hidden="true" tabindex="-1"></a>yhat_norm <span class="ot">&lt;-</span> <span class="fu">predict</span>(mod_lag1_norm, <span class="at">type =</span> <span class="st">"response"</span>)</span>
+<span id="cb38-3"><a href="#cb38-3" aria-hidden="true" tabindex="-1"></a>devianza_norm <span class="ot">&lt;-</span> <span class="fu">deviance</span>(mod_lag1_norm)</span>
+<span id="cb38-4"><a href="#cb38-4" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb38-5"><a href="#cb38-5" aria-hidden="true" tabindex="-1"></a>fMSE_norm <span class="ot">&lt;-</span> <span class="fu">mean</span>(<span class="fu">rowMeans</span>((base<span class="sc">$</span>Y <span class="sc">-</span> yhat_norm)<span class="sc">^</span><span class="dv">2</span>))</span>
+<span id="cb38-6"><a href="#cb38-6" aria-hidden="true" tabindex="-1"></a>fMAE_norm <span class="ot">&lt;-</span> <span class="fu">mean</span>(<span class="fu">rowMeans</span>(<span class="fu">abs</span>(base<span class="sc">$</span>Y <span class="sc">-</span> yhat_norm)))</span>
+<span id="cb38-7"><a href="#cb38-7" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb38-8"><a href="#cb38-8" aria-hidden="true" tabindex="-1"></a><span class="co"># Poisson</span></span>
+<span id="cb38-9"><a href="#cb38-9" aria-hidden="true" tabindex="-1"></a>yhat_pois <span class="ot">&lt;-</span> <span class="fu">predict</span>(mod_lag1_pois, <span class="at">type =</span> <span class="st">"response"</span>)</span>
+<span id="cb38-10"><a href="#cb38-10" aria-hidden="true" tabindex="-1"></a>devianza_pois <span class="ot">&lt;-</span> <span class="fu">deviance</span>(mod_lag1_pois)</span>
+<span id="cb38-11"><a href="#cb38-11" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb38-12"><a href="#cb38-12" aria-hidden="true" tabindex="-1"></a>fMSE_pois <span class="ot">&lt;-</span> <span class="fu">mean</span>(<span class="fu">rowMeans</span>((base<span class="sc">$</span>Y <span class="sc">-</span> yhat_pois)<span class="sc">^</span><span class="dv">2</span>))</span>
+<span id="cb38-13"><a href="#cb38-13" aria-hidden="true" tabindex="-1"></a>fMAE_pois <span class="ot">&lt;-</span> <span class="fu">mean</span>(<span class="fu">rowMeans</span>(<span class="fu">abs</span>(base<span class="sc">$</span>Y <span class="sc">-</span> yhat_pois)))</span>
+<span id="cb38-14"><a href="#cb38-14" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb38-15"><a href="#cb38-15" aria-hidden="true" tabindex="-1"></a><span class="co"># Quasi-poisson</span></span>
+<span id="cb38-16"><a href="#cb38-16" aria-hidden="true" tabindex="-1"></a>yhat_quasi <span class="ot">&lt;-</span> <span class="fu">predict</span>(mod_lag1_quasi, <span class="at">type =</span> <span class="st">"response"</span>)</span>
+<span id="cb38-17"><a href="#cb38-17" aria-hidden="true" tabindex="-1"></a>devianza_quasi <span class="ot">&lt;-</span> <span class="fu">deviance</span>(mod_lag1_quasi)</span>
+<span id="cb38-18"><a href="#cb38-18" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb38-19"><a href="#cb38-19" aria-hidden="true" tabindex="-1"></a>fMSE_quasi <span class="ot">&lt;-</span> <span class="fu">mean</span>(<span class="fu">rowMeans</span>((base<span class="sc">$</span>Y <span class="sc">-</span> yhat_quasi)<span class="sc">^</span><span class="dv">2</span>))</span>
+<span id="cb38-20"><a href="#cb38-20" aria-hidden="true" tabindex="-1"></a>fMAE_quasi <span class="ot">&lt;-</span> <span class="fu">mean</span>(<span class="fu">rowMeans</span>(<span class="fu">abs</span>(base<span class="sc">$</span>Y <span class="sc">-</span> yhat_quasi)))</span>
+<span id="cb38-21"><a href="#cb38-21" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb38-22"><a href="#cb38-22" aria-hidden="true" tabindex="-1"></a><span class="co"># Binomial negativa</span></span>
+<span id="cb38-23"><a href="#cb38-23" aria-hidden="true" tabindex="-1"></a>yhat_bn <span class="ot">&lt;-</span> <span class="fu">predict</span>(mod_lag1_bn, <span class="at">type =</span> <span class="st">"response"</span>)</span>
+<span id="cb38-24"><a href="#cb38-24" aria-hidden="true" tabindex="-1"></a>devianza_bn <span class="ot">&lt;-</span> <span class="fu">deviance</span>(mod_lag1_bn)</span>
+<span id="cb38-25"><a href="#cb38-25" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb38-26"><a href="#cb38-26" aria-hidden="true" tabindex="-1"></a>fMSE_bn <span class="ot">&lt;-</span> <span class="fu">mean</span>(<span class="fu">rowMeans</span>((base<span class="sc">$</span>Y <span class="sc">-</span> yhat_bn)<span class="sc">^</span><span class="dv">2</span>))</span>
+<span id="cb38-27"><a href="#cb38-27" aria-hidden="true" tabindex="-1"></a>fMAE_bn <span class="ot">&lt;-</span> <span class="fu">mean</span>(<span class="fu">rowMeans</span>(<span class="fu">abs</span>(base<span class="sc">$</span>Y <span class="sc">-</span> yhat_bn)))</span></code><button title="Copiar al portapapeles" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</div>
+<div class="cell">
+<div class="cell-output-display">
+<div id="tbl-metricas" class="anchored">
+<table class="table table-sm table-striped small">
+<caption>Tabla&nbsp;1: Tabla de valores p</caption>
+<thead>
+<tr class="header">
+<th style="text-align: left;">Distribución</th>
+<th style="text-align: right;">MSE</th>
+<th style="text-align: right;">MAE</th>
+<th style="text-align: right;">Devianza</th>
+<th style="text-align: left;">R.sq..adj.</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td style="text-align: left;">Normal</td>
+<td style="text-align: right;">1680.2</td>
+<td style="text-align: right;">31.8</td>
+<td style="text-align: right;">1747454.0</td>
+<td style="text-align: left;">70%</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">Poisson</td>
+<td style="text-align: right;">1507.6</td>
+<td style="text-align: right;">30.2</td>
+<td style="text-align: right;">3580.8</td>
+<td style="text-align: left;">72%</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">Quasi-poisson</td>
+<td style="text-align: right;">1652.7</td>
+<td style="text-align: right;">31.5</td>
+<td style="text-align: right;">3912.8</td>
+<td style="text-align: left;">70%</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">Binomial Negativa</td>
+<td style="text-align: right;">1673.7</td>
+<td style="text-align: right;">31.6</td>
+<td style="text-align: right;">950.7</td>
+<td style="text-align: left;">70%</td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+</div>
+<p>Además, tomando en cuenta los supuestos, el modelo binomial negativa compensa la sobredispersión y cumple con los otros supuestos de independencia de los residuos. Otra ventaja es que permite el uso de criterios de información como el de Akaike y Bayes, a comparación del modelo quasi-poisson.</p>
+<p>Tomando en cuenta estos criterios se escoge el modelo con distribución binomial negativa. Seguidamente, se procede con la selección de variables y número de componentes principales utilizados. La selección de variables se realizará mediante el Criterio de información de Akaike (AIC) y el Criterio de información de Bayes (BIC), donde se elimina una variable a la vez y se compara los valores de AIC y BIC entre los modelos.</p>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb39"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb39-1"><a href="#cb39-1" aria-hidden="true" tabindex="-1"></a><span class="fu">AIC</span>(mod_lag1_bn); <span class="fu">BIC</span>(mod_lag1_bn)</span></code><button title="Copiar al portapapeles" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>[1] 10742.82</code></pre>
+</div>
+<div class="cell-output cell-output-stdout">
+<pre><code>[1] 11171.69</code></pre>
+</div>
+</div>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb42"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb42-1"><a href="#cb42-1" aria-hidden="true" tabindex="-1"></a>mod_lag1_bna <span class="ot">&lt;-</span> <span class="fu">pffr</span>(Y <span class="sc">~</span> <span class="fu">ffpc</span>(tmin_lag1, <span class="at">npc =</span> <span class="dv">2</span>) <span class="sc">+</span> <span class="fu">ffpc</span>(precip_lag1, <span class="at">npc =</span> <span class="dv">1</span>) <span class="sc">+</span> <span class="fu">ffpc</span>(ampmax_lag1, <span class="at">npc =</span> <span class="dv">2</span>) <span class="sc">+</span> <span class="fu">ffpc</span>(ampmin_lag1, <span class="at">npc =</span> <span class="dv">2</span>) <span class="sc">+</span> <span class="fu">ffpc</span>(aod_lag1, <span class="at">npc =</span> <span class="dv">2</span>) <span class="sc">+</span> <span class="fu">ffpc</span>(hr_lag1, <span class="at">npc =</span> <span class="dv">2</span>) <span class="sc">+</span> <span class="fu">offset</span>(<span class="fu">log</span>(population)), <span class="at">family =</span> <span class="fu">nb</span>(), <span class="at">data =</span> base, <span class="at">yind =</span> <span class="dv">1</span><span class="sc">:</span><span class="dv">52</span>)</span>
+<span id="cb42-2"><a href="#cb42-2" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb42-3"><a href="#cb42-3" aria-hidden="true" tabindex="-1"></a><span class="fu">AIC</span>(mod_lag1_bna); <span class="fu">BIC</span>(mod_lag1_bna)</span></code><button title="Copiar al portapapeles" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>[1] 10784.74</code></pre>
+</div>
+<div class="cell-output cell-output-stdout">
+<pre><code>[1] 11183.42</code></pre>
+</div>
+</div>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb45"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb45-1"><a href="#cb45-1" aria-hidden="true" tabindex="-1"></a>mod_lag1_bnb <span class="ot">&lt;-</span> <span class="fu">pffr</span>(Y <span class="sc">~</span> <span class="fu">ffpc</span>(tmax_lag1, <span class="at">npc =</span> <span class="dv">1</span>) <span class="sc">+</span> <span class="fu">ffpc</span>(precip_lag1, <span class="at">npc =</span> <span class="dv">1</span>) <span class="sc">+</span> <span class="fu">ffpc</span>(ampmax_lag1, <span class="at">npc =</span> <span class="dv">2</span>) <span class="sc">+</span> <span class="fu">ffpc</span>(ampmin_lag1, <span class="at">npc =</span> <span class="dv">2</span>) <span class="sc">+</span> <span class="fu">ffpc</span>(aod_lag1, <span class="at">npc =</span> <span class="dv">2</span>) <span class="sc">+</span> <span class="fu">ffpc</span>(hr_lag1, <span class="at">npc =</span> <span class="dv">2</span>) <span class="sc">+</span> <span class="fu">offset</span>(<span class="fu">log</span>(population)), <span class="at">family =</span> <span class="fu">nb</span>(), <span class="at">data =</span> base, <span class="at">yind =</span> <span class="dv">1</span><span class="sc">:</span><span class="dv">52</span>)</span>
+<span id="cb45-2"><a href="#cb45-2" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb45-3"><a href="#cb45-3" aria-hidden="true" tabindex="-1"></a><span class="fu">AIC</span>(mod_lag1_bnb); <span class="fu">BIC</span>(mod_lag1_bnb)</span></code><button title="Copiar al portapapeles" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>[1] 10879.8</code></pre>
+</div>
+<div class="cell-output cell-output-stdout">
+<pre><code>[1] 11248.38</code></pre>
+</div>
+</div>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb48"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb48-1"><a href="#cb48-1" aria-hidden="true" tabindex="-1"></a>mod_lag1_bnc <span class="ot">&lt;-</span> <span class="fu">pffr</span>(Y <span class="sc">~</span> <span class="fu">ffpc</span>(tmax_lag1, <span class="at">npc =</span> <span class="dv">1</span>) <span class="sc">+</span> <span class="fu">ffpc</span>(tmin_lag1, <span class="at">npc =</span> <span class="dv">2</span>) <span class="sc">+</span> <span class="fu">ffpc</span>(ampmax_lag1, <span class="at">npc =</span> <span class="dv">2</span>) <span class="sc">+</span> <span class="fu">ffpc</span>(ampmin_lag1, <span class="at">npc =</span> <span class="dv">2</span>) <span class="sc">+</span> <span class="fu">ffpc</span>(aod_lag1, <span class="at">npc =</span> <span class="dv">2</span>) <span class="sc">+</span> <span class="fu">ffpc</span>(hr_lag1, <span class="at">npc =</span> <span class="dv">2</span>) <span class="sc">+</span> <span class="fu">offset</span>(<span class="fu">log</span>(population)), <span class="at">family =</span> <span class="fu">nb</span>(), <span class="at">data =</span> base, <span class="at">yind =</span> <span class="dv">1</span><span class="sc">:</span><span class="dv">52</span>)</span>
+<span id="cb48-2"><a href="#cb48-2" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb48-3"><a href="#cb48-3" aria-hidden="true" tabindex="-1"></a><span class="fu">AIC</span>(mod_lag1_bnc); <span class="fu">BIC</span>(mod_lag1_bnc)</span></code><button title="Copiar al portapapeles" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>[1] 10890.21</code></pre>
+</div>
+<div class="cell-output cell-output-stdout">
+<pre><code>[1] 11275.36</code></pre>
+</div>
+</div>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb51"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb51-1"><a href="#cb51-1" aria-hidden="true" tabindex="-1"></a>mod_lag1_bnd <span class="ot">&lt;-</span> <span class="fu">pffr</span>(Y <span class="sc">~</span> <span class="fu">ffpc</span>(tmax_lag1, <span class="at">npc =</span> <span class="dv">1</span>) <span class="sc">+</span> <span class="fu">ffpc</span>(tmin_lag1, <span class="at">npc =</span> <span class="dv">2</span>) <span class="sc">+</span> <span class="fu">ffpc</span>(precip_lag1, <span class="at">npc =</span> </span>
+<span id="cb51-2"><a href="#cb51-2" aria-hidden="true" tabindex="-1"></a><span class="dv">1</span>)  <span class="sc">+</span> <span class="fu">ffpc</span>(ampmin_lag1, <span class="at">npc =</span> <span class="dv">2</span>) <span class="sc">+</span> <span class="fu">ffpc</span>(aod_lag1, <span class="at">npc =</span> <span class="dv">2</span>) <span class="sc">+</span> <span class="fu">ffpc</span>(hr_lag1, <span class="at">npc =</span> <span class="dv">2</span>) <span class="sc">+</span> <span class="fu">offset</span>(<span class="fu">log</span>(population)), <span class="at">family =</span> <span class="fu">nb</span>(), <span class="at">data =</span> base, <span class="at">yind =</span> <span class="dv">1</span><span class="sc">:</span><span class="dv">52</span>)</span>
+<span id="cb51-3"><a href="#cb51-3" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb51-4"><a href="#cb51-4" aria-hidden="true" tabindex="-1"></a><span class="fu">AIC</span>(mod_lag1_bnd); <span class="fu">BIC</span>(mod_lag1_bnd)</span></code><button title="Copiar al portapapeles" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>[1] 10848.05</code></pre>
+</div>
+<div class="cell-output cell-output-stdout">
+<pre><code>[1] 11215.54</code></pre>
+</div>
+</div>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb54"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb54-1"><a href="#cb54-1" aria-hidden="true" tabindex="-1"></a>mod_lag1_bne <span class="ot">&lt;-</span> <span class="fu">pffr</span>(Y <span class="sc">~</span> <span class="fu">ffpc</span>(tmax_lag1, <span class="at">npc =</span> <span class="dv">1</span>) <span class="sc">+</span> <span class="fu">ffpc</span>(tmin_lag1, <span class="at">npc =</span> <span class="dv">2</span>) <span class="sc">+</span> <span class="fu">ffpc</span>(precip_lag1, <span class="at">npc =</span> </span>
+<span id="cb54-2"><a href="#cb54-2" aria-hidden="true" tabindex="-1"></a><span class="dv">1</span>) <span class="sc">+</span> <span class="fu">ffpc</span>(ampmax_lag1, <span class="at">npc =</span> <span class="dv">2</span>) <span class="sc">+</span> <span class="fu">ffpc</span>(aod_lag1, <span class="at">npc =</span> <span class="dv">2</span>) <span class="sc">+</span> <span class="fu">ffpc</span>(hr_lag1, <span class="at">npc =</span> <span class="dv">2</span>) <span class="sc">+</span> <span class="fu">offset</span>(<span class="fu">log</span>(population)), <span class="at">family =</span> <span class="fu">nb</span>(), <span class="at">data =</span> base, <span class="at">yind =</span> <span class="dv">1</span><span class="sc">:</span><span class="dv">52</span>)</span>
+<span id="cb54-3"><a href="#cb54-3" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb54-4"><a href="#cb54-4" aria-hidden="true" tabindex="-1"></a><span class="fu">AIC</span>(mod_lag1_bne); <span class="fu">BIC</span>(mod_lag1_bne)</span></code><button title="Copiar al portapapeles" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>[1] 10850.85</code></pre>
+</div>
+<div class="cell-output cell-output-stdout">
+<pre><code>[1] 11225.56</code></pre>
+</div>
+</div>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb57"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb57-1"><a href="#cb57-1" aria-hidden="true" tabindex="-1"></a>mod_lag1_bnf <span class="ot">&lt;-</span> <span class="fu">pffr</span>(Y <span class="sc">~</span> <span class="fu">ffpc</span>(tmax_lag1, <span class="at">npc =</span> <span class="dv">1</span>) <span class="sc">+</span> <span class="fu">ffpc</span>(tmin_lag1, <span class="at">npc =</span> <span class="dv">2</span>) <span class="sc">+</span> <span class="fu">ffpc</span>(precip_lag1, <span class="at">npc =</span> </span>
+<span id="cb57-2"><a href="#cb57-2" aria-hidden="true" tabindex="-1"></a><span class="dv">1</span>) <span class="sc">+</span> <span class="fu">ffpc</span>(ampmax_lag1, <span class="at">npc =</span> <span class="dv">2</span>) <span class="sc">+</span> <span class="fu">ffpc</span>(ampmin_lag1, <span class="at">npc =</span> <span class="dv">2</span>) <span class="sc">+</span> <span class="fu">ffpc</span>(hr_lag1, <span class="at">npc =</span> <span class="dv">2</span>) <span class="sc">+</span> <span class="fu">offset</span>(<span class="fu">log</span>(population)), <span class="at">family =</span> <span class="fu">nb</span>(), <span class="at">data =</span> base, <span class="at">yind =</span> <span class="dv">1</span><span class="sc">:</span><span class="dv">52</span>)</span>
+<span id="cb57-3"><a href="#cb57-3" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb57-4"><a href="#cb57-4" aria-hidden="true" tabindex="-1"></a><span class="fu">AIC</span>(mod_lag1_bnf); <span class="fu">BIC</span>(mod_lag1_bnf)</span></code><button title="Copiar al portapapeles" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>[1] 10956.01</code></pre>
+</div>
+<div class="cell-output cell-output-stdout">
+<pre><code>[1] 11323.35</code></pre>
+</div>
+</div>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb60"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb60-1"><a href="#cb60-1" aria-hidden="true" tabindex="-1"></a>mod_lag1_bng <span class="ot">&lt;-</span> <span class="fu">pffr</span>(Y <span class="sc">~</span> <span class="fu">ffpc</span>(tmax_lag1, <span class="at">npc =</span> <span class="dv">1</span>) <span class="sc">+</span> <span class="fu">ffpc</span>(tmin_lag1, <span class="at">npc =</span> <span class="dv">2</span>) <span class="sc">+</span> <span class="fu">ffpc</span>(precip_lag1, <span class="at">npc =</span> </span>
+<span id="cb60-2"><a href="#cb60-2" aria-hidden="true" tabindex="-1"></a><span class="dv">1</span>) <span class="sc">+</span> <span class="fu">ffpc</span>(ampmax_lag1, <span class="at">npc =</span> <span class="dv">2</span>) <span class="sc">+</span> <span class="fu">ffpc</span>(ampmin_lag1, <span class="at">npc =</span> <span class="dv">2</span>) <span class="sc">+</span> <span class="fu">ffpc</span>(aod_lag1, <span class="at">npc =</span> <span class="dv">2</span>) <span class="sc">+</span> <span class="fu">offset</span>(<span class="fu">log</span>(population)), <span class="at">family =</span> <span class="fu">nb</span>(), <span class="at">data =</span> base, <span class="at">yind =</span> <span class="dv">1</span><span class="sc">:</span><span class="dv">52</span>)</span>
+<span id="cb60-3"><a href="#cb60-3" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb60-4"><a href="#cb60-4" aria-hidden="true" tabindex="-1"></a><span class="fu">AIC</span>(mod_lag1_bng); <span class="fu">BIC</span>(mod_lag1_bng)</span></code><button title="Copiar al portapapeles" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>[1] 10895.16</code></pre>
+</div>
+<div class="cell-output cell-output-stdout">
+<pre><code>[1] 11273.03</code></pre>
+</div>
+</div>
+<p>Al comparar los valores de AIC y BIC para los dintintos modelos, se concluye que el modelo se mantiene con todas las covariables.</p>
+<p>Se prosigue eliminando un componente principal a la vez. Primero se elimina el segundo componente de la variable de aod_lag1, debido a que no resultó significativo.</p>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb63"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb63-1"><a href="#cb63-1" aria-hidden="true" tabindex="-1"></a>mod_lag1_bn1 <span class="ot">&lt;-</span> <span class="fu">pffr</span>(Y <span class="sc">~</span> <span class="fu">ffpc</span>(tmax_lag1, <span class="at">npc =</span> <span class="dv">1</span>) <span class="sc">+</span> <span class="fu">ffpc</span>(tmin_lag1, <span class="at">npc =</span> <span class="dv">1</span>) <span class="sc">+</span> <span class="fu">ffpc</span>(precip_lag1, <span class="at">npc =</span> <span class="dv">1</span>) <span class="sc">+</span> <span class="fu">ffpc</span>(ampmax_lag1, <span class="at">npc =</span> <span class="dv">2</span>) <span class="sc">+</span> <span class="fu">ffpc</span>(ampmin_lag1, <span class="at">npc =</span> <span class="dv">2</span>) <span class="sc">+</span> <span class="fu">ffpc</span>(aod_lag1, <span class="at">npc =</span> <span class="dv">1</span>) <span class="sc">+</span> <span class="fu">ffpc</span>(hr_lag1, <span class="at">npc =</span> <span class="dv">2</span>) <span class="sc">+</span> <span class="fu">offset</span>(<span class="fu">log</span>(population)), <span class="at">family =</span> <span class="fu">nb</span>(), <span class="at">data =</span> base, <span class="at">yind =</span> <span class="dv">1</span><span class="sc">:</span><span class="dv">52</span>)</span>
+<span id="cb63-2"><a href="#cb63-2" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb63-3"><a href="#cb63-3" aria-hidden="true" tabindex="-1"></a><span class="fu">summary</span>(mod_lag1_bn1)<span class="sc">$</span>r.sq</span></code><button title="Copiar al portapapeles" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>[1] 0.6322939</code></pre>
+</div>
+<div class="sourceCode cell-code" id="cb65"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb65-1"><a href="#cb65-1" aria-hidden="true" tabindex="-1"></a><span class="fu">AIC</span>(mod_lag1_bn1); <span class="fu">BIC</span>(mod_lag1_bn1)</span></code><button title="Copiar al portapapeles" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>[1] 10923.11</code></pre>
+</div>
+<div class="cell-output cell-output-stdout">
+<pre><code>[1] 11289</code></pre>
+</div>
+</div>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb68"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb68-1"><a href="#cb68-1" aria-hidden="true" tabindex="-1"></a>mod_lag1_bn2 <span class="ot">&lt;-</span> <span class="fu">pffr</span>(Y <span class="sc">~</span> <span class="fu">ffpc</span>(tmax_lag1, <span class="at">npc =</span> <span class="dv">1</span>) <span class="sc">+</span> <span class="fu">ffpc</span>(tmin_lag1, <span class="at">npc =</span> <span class="dv">2</span>) <span class="sc">+</span> <span class="fu">ffpc</span>(precip_lag1, <span class="at">npc =</span> <span class="dv">1</span>) <span class="sc">+</span> <span class="fu">ffpc</span>(ampmax_lag1, <span class="at">npc =</span> <span class="dv">1</span>) <span class="sc">+</span> <span class="fu">ffpc</span>(ampmin_lag1, <span class="at">npc =</span> <span class="dv">2</span>) <span class="sc">+</span> <span class="fu">ffpc</span>(aod_lag1, <span class="at">npc =</span> <span class="dv">1</span>) <span class="sc">+</span> <span class="fu">ffpc</span>(hr_lag1, <span class="at">npc =</span> <span class="dv">2</span>) <span class="sc">+</span> <span class="fu">offset</span>(<span class="fu">log</span>(population)), <span class="at">family =</span> <span class="fu">nb</span>(), <span class="at">data =</span> base, <span class="at">yind =</span> <span class="dv">1</span><span class="sc">:</span><span class="dv">52</span>)</span>
+<span id="cb68-2"><a href="#cb68-2" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb68-3"><a href="#cb68-3" aria-hidden="true" tabindex="-1"></a><span class="fu">summary</span>(mod_lag1_bn2)<span class="sc">$</span>r.sq</span></code><button title="Copiar al portapapeles" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>[1] 0.6922442</code></pre>
+</div>
+<div class="sourceCode cell-code" id="cb70"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb70-1"><a href="#cb70-1" aria-hidden="true" tabindex="-1"></a><span class="fu">AIC</span>(mod_lag1_bn2); <span class="fu">BIC</span>(mod_lag1_bn2)</span></code><button title="Copiar al portapapeles" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>[1] 10758.47</code></pre>
+</div>
+<div class="cell-output cell-output-stdout">
+<pre><code>[1] 11145.57</code></pre>
+</div>
+</div>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb73"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb73-1"><a href="#cb73-1" aria-hidden="true" tabindex="-1"></a>mod_lag1_bn3 <span class="ot">&lt;-</span> <span class="fu">pffr</span>(Y <span class="sc">~</span> <span class="fu">ffpc</span>(tmax_lag1, <span class="at">npc =</span> <span class="dv">1</span>) <span class="sc">+</span> <span class="fu">ffpc</span>(tmin_lag1, <span class="at">npc =</span> <span class="dv">2</span>) <span class="sc">+</span> <span class="fu">ffpc</span>(precip_lag1, <span class="at">npc =</span> <span class="dv">1</span>) <span class="sc">+</span> <span class="fu">ffpc</span>(ampmax_lag1, <span class="at">npc =</span> <span class="dv">2</span>) <span class="sc">+</span> <span class="fu">ffpc</span>(ampmin_lag1, <span class="at">npc =</span> <span class="dv">1</span>) <span class="sc">+</span> <span class="fu">ffpc</span>(aod_lag1, <span class="at">npc =</span> <span class="dv">1</span>) <span class="sc">+</span> <span class="fu">ffpc</span>(hr_lag1, <span class="at">npc =</span> <span class="dv">2</span>) <span class="sc">+</span> <span class="fu">offset</span>(<span class="fu">log</span>(population)), <span class="at">family =</span> <span class="fu">nb</span>(), <span class="at">data =</span> base, <span class="at">yind =</span> <span class="dv">1</span><span class="sc">:</span><span class="dv">52</span>)</span>
+<span id="cb73-2"><a href="#cb73-2" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb73-3"><a href="#cb73-3" aria-hidden="true" tabindex="-1"></a><span class="fu">summary</span>(mod_lag1_bn3)<span class="sc">$</span>r.sq</span></code><button title="Copiar al portapapeles" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>[1] 0.6817626</code></pre>
+</div>
+<div class="sourceCode cell-code" id="cb75"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb75-1"><a href="#cb75-1" aria-hidden="true" tabindex="-1"></a><span class="fu">AIC</span>(mod_lag1_bn3); <span class="fu">BIC</span>(mod_lag1_bn3)</span></code><button title="Copiar al portapapeles" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>[1] 10789.52</code></pre>
+</div>
+<div class="cell-output cell-output-stdout">
+<pre><code>[1] 11174.96</code></pre>
+</div>
+</div>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb78"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb78-1"><a href="#cb78-1" aria-hidden="true" tabindex="-1"></a>mod_lag1_bn4 <span class="ot">&lt;-</span> <span class="fu">pffr</span>(Y <span class="sc">~</span> <span class="fu">ffpc</span>(tmax_lag1, <span class="at">npc =</span> <span class="dv">1</span>) <span class="sc">+</span> <span class="fu">ffpc</span>(tmin_lag1, <span class="at">npc =</span> <span class="dv">2</span>) <span class="sc">+</span> <span class="fu">ffpc</span>(precip_lag1, <span class="at">npc =</span> <span class="dv">1</span>) <span class="sc">+</span> <span class="fu">ffpc</span>(ampmax_lag1, <span class="at">npc =</span> <span class="dv">2</span>) <span class="sc">+</span> <span class="fu">ffpc</span>(ampmin_lag1, <span class="at">npc =</span> <span class="dv">2</span>) <span class="sc">+</span> <span class="fu">ffpc</span>(aod_lag1, <span class="at">npc =</span> <span class="dv">1</span>) <span class="sc">+</span> <span class="fu">ffpc</span>(hr_lag1, <span class="at">npc =</span> <span class="dv">1</span>) <span class="sc">+</span> <span class="fu">offset</span>(<span class="fu">log</span>(population)), <span class="at">family =</span> <span class="fu">nb</span>(), <span class="at">data =</span> base, <span class="at">yind =</span> <span class="dv">1</span><span class="sc">:</span><span class="dv">52</span>)</span>
+<span id="cb78-2"><a href="#cb78-2" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb78-3"><a href="#cb78-3" aria-hidden="true" tabindex="-1"></a><span class="fu">summary</span>(mod_lag1_bn4)<span class="sc">$</span>r.sq</span></code><button title="Copiar al portapapeles" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>[1] 0.6797476</code></pre>
+</div>
+<div class="sourceCode cell-code" id="cb80"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb80-1"><a href="#cb80-1" aria-hidden="true" tabindex="-1"></a><span class="fu">AIC</span>(mod_lag1_bn4); <span class="fu">BIC</span>(mod_lag1_bn4)</span></code><button title="Copiar al portapapeles" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>[1] 10795.4</code></pre>
+</div>
+<div class="cell-output cell-output-stdout">
+<pre><code>[1] 11181.5</code></pre>
+</div>
+</div>
+<p>Al comparar los valores de AIC y BIC de los dintintos modelos, se concluye que el modelo se mantiene con sus componentes restantes.</p>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb83"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb83-1"><a href="#cb83-1" aria-hidden="true" tabindex="-1"></a>mod_lag1_final <span class="ot">&lt;-</span> <span class="fu">pffr</span>(Y <span class="sc">~</span> <span class="fu">ffpc</span>(tmax_lag1, <span class="at">npc =</span> <span class="dv">1</span>) <span class="sc">+</span> <span class="fu">ffpc</span>(tmin_lag1, <span class="at">npc =</span> <span class="dv">2</span>) <span class="sc">+</span> <span class="fu">ffpc</span>(precip_lag1, <span class="at">npc =</span> <span class="dv">1</span>) <span class="sc">+</span> <span class="fu">ffpc</span>(ampmax_lag1, <span class="at">npc =</span> <span class="dv">2</span>) <span class="sc">+</span> <span class="fu">ffpc</span>(ampmin_lag1, <span class="at">npc =</span> <span class="dv">2</span>) <span class="sc">+</span> <span class="fu">ffpc</span>(aod_lag1, <span class="at">npc =</span> <span class="dv">1</span>) <span class="sc">+</span> <span class="fu">ffpc</span>(hr_lag1, <span class="at">npc =</span> <span class="dv">2</span>) <span class="sc">+</span> <span class="fu">offset</span>(<span class="fu">log</span>(poblacion)), <span class="at">family =</span> <span class="fu">nb</span>(), <span class="at">data =</span> base, <span class="at">yind =</span> <span class="dv">1</span><span class="sc">:</span><span class="dv">52</span>)</span></code><button title="Copiar al portapapeles" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</div>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb84"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb84-1"><a href="#cb84-1" aria-hidden="true" tabindex="-1"></a><span class="fu">summary</span>(mod_lag1_final)</span></code><button title="Copiar al portapapeles" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>
+Family: Negative Binomial(136.108) 
+Link function: log 
+
+Formula:
+Y ~ ffpc(tmax_lag1, npc = 1) + ffpc(tmin_lag1, npc = 2) + ffpc(precip_lag1, 
+    npc = 1) + ffpc(ampmax_lag1, npc = 2) + ffpc(ampmin_lag1, 
+    npc = 2) + ffpc(aod_lag1, npc = 1) + ffpc(hr_lag1, npc = 2) + 
+    offset(log(poblacion))
+
+Constant coefficients:
+            Estimate Std. Error z value Pr(&gt;|z|)    
+(Intercept) 6.015536   0.003391    1774   &lt;2e-16 ***
+---
+Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
+
+Smooth terms &amp; functional coefficients:
+                        edf Ref.df  Chi.sq  p-value    
+Intercept(yindex)    15.154 19.000 1236.13  &lt; 2e-16 ***
+ffpc(tmax_lag1,1)1    5.931  6.444   65.01  &lt; 2e-16 ***
+ffpc(tmin_lag1,2)1    5.411  6.006   56.55  &lt; 2e-16 ***
+ffpc(tmin_lag1,2)2    5.993  6.507  149.62  &lt; 2e-16 ***
+ffpc(precip_lag1,1)1  5.997  6.556  146.41  &lt; 2e-16 ***
+ffpc(ampmax_lag1,2)1  6.516  6.991   93.64  &lt; 2e-16 ***
+ffpc(ampmax_lag1,2)2  5.661  6.276   25.75 0.000336 ***
+ffpc(ampmin_lag1,2)1  6.033  6.538   92.42  &lt; 2e-16 ***
+ffpc(ampmin_lag1,2)2  5.449  6.094   47.41  &lt; 2e-16 ***
+ffpc(aod_lag1,1)1     5.036  5.717  204.06  &lt; 2e-16 ***
+ffpc(hr_lag1,2)1      5.247  5.897  192.62  &lt; 2e-16 ***
+ffpc(hr_lag1,2)2      4.954  5.637   56.46  &lt; 2e-16 ***
+---
+Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
+
+R-sq.(adj) =  0.696   Deviance explained = 72.9%
+-REML score =   5478  Scale est. = 1         n = 1040 (20 x 52)</code></pre>
+</div>
+</div>
+<ul>
+<li><p>Se puede observar que, con un nivel de significancia del 5%, todos los componentes para todas las covariables tienen un efecto significativo sobre la respuesta funcional.</p></li>
+<li><p>El modelo logra explicar un 70% de la variabilidad total (ajustado).</p></li>
+</ul>
+<section id="diagnóstico" class="level2" data-number="3.1">
+<h2 data-number="3.1" class="anchored" data-anchor-id="diagnóstico"><span class="header-section-number">3.1</span> Diagnóstico</h2>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb86"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb86-1"><a href="#cb86-1" aria-hidden="true" tabindex="-1"></a>residual <span class="ot">&lt;-</span> <span class="fu">residuals</span>(mod_lag1_final) </span></code><button title="Copiar al portapapeles" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</div>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb87"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb87-1"><a href="#cb87-1" aria-hidden="true" tabindex="-1"></a><span class="fu">image.plot</span>(<span class="dv">1</span><span class="sc">:</span><span class="dv">52</span>, <span class="dv">1</span><span class="sc">:</span><span class="dv">20</span>, <span class="fu">t</span>(residual), </span>
+<span id="cb87-2"><a href="#cb87-2" aria-hidden="true" tabindex="-1"></a>           <span class="at">xlab =</span> <span class="st">"Semana"</span>, </span>
+<span id="cb87-3"><a href="#cb87-3" aria-hidden="true" tabindex="-1"></a>           <span class="at">ylab =</span> <span class="st">"Año"</span>,</span>
+<span id="cb87-4"><a href="#cb87-4" aria-hidden="true" tabindex="-1"></a>           <span class="at">zlim =</span> <span class="fu">c</span>(<span class="sc">-</span><span class="dv">4</span>,<span class="dv">4</span>),</span>
+<span id="cb87-5"><a href="#cb87-5" aria-hidden="true" tabindex="-1"></a>           <span class="at">axis.args =</span> <span class="fu">list</span>(<span class="at">at =</span> <span class="fu">seq</span>(<span class="sc">-</span><span class="dv">4</span>,<span class="dv">4</span>, <span class="at">by =</span> <span class="dv">1</span>)),</span>
+<span id="cb87-6"><a href="#cb87-6" aria-hidden="true" tabindex="-1"></a>           <span class="at">legend.shrink =</span> <span class="fl">0.8</span>,</span>
+<span id="cb87-7"><a href="#cb87-7" aria-hidden="true" tabindex="-1"></a>           <span class="at">legend.line =</span> <span class="sc">-</span><span class="fl">1.5</span>,<span class="at">legend.width  =</span>  <span class="fl">0.5</span>)</span></code><button title="Copiar al portapapeles" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output-display">
+<div id="fig-supuesto_fin1" class="quarto-figure quarto-figure-center anchored">
+<figure class="figure">
+<p><img src="Regresion-lag1_files/figure-html/fig-supuesto_fin1-1.png" class="img-fluid figure-img" width="672"></p>
+<figcaption class="figure-caption">Figura&nbsp;12: Valores residuales para cada año a lo largo de las 52 semanas</figcaption>
+</figure>
+</div>
+</div>
+</div>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb88"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb88-1"><a href="#cb88-1" aria-hidden="true" tabindex="-1"></a><span class="co">#Plot the residual correlations</span></span>
+<span id="cb88-2"><a href="#cb88-2" aria-hidden="true" tabindex="-1"></a>corr_res <span class="ot">&lt;-</span> <span class="fu">cor</span>(residual)</span>
+<span id="cb88-3"><a href="#cb88-3" aria-hidden="true" tabindex="-1"></a><span class="fu">image.plot</span>(<span class="dv">1</span><span class="sc">:</span><span class="dv">52</span>, <span class="dv">1</span><span class="sc">:</span><span class="dv">52</span>, corr_res, </span>
+<span id="cb88-4"><a href="#cb88-4" aria-hidden="true" tabindex="-1"></a>           <span class="at">xlab =</span> <span class="st">"Semanas"</span>, </span>
+<span id="cb88-5"><a href="#cb88-5" aria-hidden="true" tabindex="-1"></a>           <span class="at">ylab =</span> <span class="st">"Semanas"</span>, </span>
+<span id="cb88-6"><a href="#cb88-6" aria-hidden="true" tabindex="-1"></a>           <span class="at">zlim =</span> <span class="fu">c</span>(<span class="sc">-</span><span class="dv">1</span>, <span class="dv">1</span>),  </span>
+<span id="cb88-7"><a href="#cb88-7" aria-hidden="true" tabindex="-1"></a>           <span class="at">axis.args =</span> <span class="fu">list</span>(<span class="at">at =</span> <span class="fu">seq</span>(<span class="sc">-</span><span class="dv">1</span>, <span class="dv">1</span>, <span class="at">by =</span> <span class="fl">0.2</span>)),</span>
+<span id="cb88-8"><a href="#cb88-8" aria-hidden="true" tabindex="-1"></a>           <span class="at">legend.shrink =</span> <span class="fl">0.8</span>,</span>
+<span id="cb88-9"><a href="#cb88-9" aria-hidden="true" tabindex="-1"></a>           <span class="at">legend.line =</span> <span class="sc">-</span><span class="fl">1.5</span>, </span>
+<span id="cb88-10"><a href="#cb88-10" aria-hidden="true" tabindex="-1"></a>           <span class="at">legend.width =</span> <span class="fl">0.5</span>)</span></code><button title="Copiar al portapapeles" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output-display">
+<div id="fig-supuesto_fin2" class="quarto-figure quarto-figure-center anchored">
+<figure class="figure">
+<p><img src="Regresion-lag1_files/figure-html/fig-supuesto_fin2-1.png" class="img-fluid figure-img" width="672"></p>
+<figcaption class="figure-caption">Figura&nbsp;13: Correlación entre los residuos</figcaption>
+</figure>
+</div>
+</div>
+</div>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb89"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb89-1"><a href="#cb89-1" aria-hidden="true" tabindex="-1"></a>res_df <span class="ot">&lt;-</span> <span class="fu">data.frame</span>(<span class="at">id =</span> <span class="fu">rep</span>(<span class="dv">1</span><span class="sc">:</span><span class="fu">nrow</span>(residual), <span class="at">each =</span> <span class="fu">ncol</span>(residual)),</span>
+<span id="cb89-2"><a href="#cb89-2" aria-hidden="true" tabindex="-1"></a>                     <span class="at">week =</span> <span class="fu">rep</span>(<span class="dv">1</span><span class="sc">:</span>t, <span class="at">times =</span> <span class="fu">nrow</span>(residual)),</span>
+<span id="cb89-3"><a href="#cb89-3" aria-hidden="true" tabindex="-1"></a>                     <span class="at">residual =</span> <span class="fu">as.vector</span>(<span class="fu">t</span>(residual)))</span>
+<span id="cb89-4"><a href="#cb89-4" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb89-5"><a href="#cb89-5" aria-hidden="true" tabindex="-1"></a><span class="fu">ggplot</span>(res_df, <span class="fu">aes</span>(<span class="at">x =</span> week, <span class="at">y =</span> residual, <span class="at">group =</span> id)) <span class="sc">+</span> <span class="fu">geom_line</span>(<span class="at">alpha =</span> <span class="fl">0.1</span>) <span class="sc">+</span> <span class="fu">labs</span>(<span class="at">x =</span> <span class="st">"Semana"</span>, <span class="at">y =</span> <span class="st">"Residuales"</span>) <span class="sc">+</span> <span class="fu">theme_minimal</span>()</span></code><button title="Copiar al portapapeles" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output-display">
+<div id="fig-supuesto_fin3" class="quarto-figure quarto-figure-center anchored">
+<figure class="figure">
+<p><img src="Regresion-lag1_files/figure-html/fig-supuesto_fin3-1.png" class="img-fluid figure-img" width="672"></p>
+<figcaption class="figure-caption">Figura&nbsp;14: Residuales funcionales estimados</figcaption>
+</figure>
+</div>
+</div>
+</div>
+</section>
+<section id="interpretaciones" class="level2" data-number="3.2">
+<h2 data-number="3.2" class="anchored" data-anchor-id="interpretaciones"><span class="header-section-number">3.2</span> Interpretaciones</h2>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb90"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb90-1"><a href="#cb90-1" aria-hidden="true" tabindex="-1"></a>coef <span class="ot">&lt;-</span> <span class="fu">coef</span>(mod_lag1_final)</span></code><button title="Copiar al portapapeles" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>using seWithMean for  s(yindex.vec) .</code></pre>
+</div>
+<div class="sourceCode cell-code" id="cb92"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb92-1"><a href="#cb92-1" aria-hidden="true" tabindex="-1"></a>beta0.hat <span class="ot">&lt;-</span> coef<span class="sc">$</span>smterms<span class="sc">$</span><span class="st">`</span><span class="at">Intercept(yindex)</span><span class="st">`</span><span class="sc">$</span>coef</span>
+<span id="cb92-2"><a href="#cb92-2" aria-hidden="true" tabindex="-1"></a>beta1.hat <span class="ot">&lt;-</span> coef<span class="sc">$</span>smterms<span class="sc">$</span><span class="st">`</span><span class="at">ffpc(tmax_lag1,1)1</span><span class="st">`</span><span class="sc">$</span>coef</span>
+<span id="cb92-3"><a href="#cb92-3" aria-hidden="true" tabindex="-1"></a>beta2.hat <span class="ot">&lt;-</span> coef<span class="sc">$</span>smterms<span class="sc">$</span><span class="st">`</span><span class="at">ffpc(tmin_lag1,1)1</span><span class="st">`</span><span class="sc">$</span>coef</span>
+<span id="cb92-4"><a href="#cb92-4" aria-hidden="true" tabindex="-1"></a>beta3.hat <span class="ot">&lt;-</span> coef<span class="sc">$</span>smterms<span class="sc">$</span><span class="st">`</span><span class="at">ffpc(tmin_lag1,2)2</span><span class="st">`</span><span class="sc">$</span>coef</span>
+<span id="cb92-5"><a href="#cb92-5" aria-hidden="true" tabindex="-1"></a>beta4.hat <span class="ot">&lt;-</span> coef<span class="sc">$</span>smterms<span class="sc">$</span><span class="st">`</span><span class="at">ffpc(precip_lag1,1)1</span><span class="st">`</span><span class="sc">$</span>coef</span>
+<span id="cb92-6"><a href="#cb92-6" aria-hidden="true" tabindex="-1"></a>beta5.hat <span class="ot">&lt;-</span> coef<span class="sc">$</span>smterms<span class="sc">$</span><span class="st">`</span><span class="at">ffpc(ampmax_lag1,2)1</span><span class="st">`</span><span class="sc">$</span>coef</span>
+<span id="cb92-7"><a href="#cb92-7" aria-hidden="true" tabindex="-1"></a>beta6.hat <span class="ot">&lt;-</span> coef<span class="sc">$</span>smterms<span class="sc">$</span><span class="st">`</span><span class="at">ffpc(ampmax_lag1,2)2</span><span class="st">`</span><span class="sc">$</span>coef</span>
+<span id="cb92-8"><a href="#cb92-8" aria-hidden="true" tabindex="-1"></a>beta7.hat <span class="ot">&lt;-</span> coef<span class="sc">$</span>smterms<span class="sc">$</span><span class="st">`</span><span class="at">ffpc(ampmin_lag1,2)1</span><span class="st">`</span><span class="sc">$</span>coef</span>
+<span id="cb92-9"><a href="#cb92-9" aria-hidden="true" tabindex="-1"></a>beta8.hat <span class="ot">&lt;-</span> coef<span class="sc">$</span>smterms<span class="sc">$</span><span class="st">`</span><span class="at">ffpc(ampmin_lag1,2)2</span><span class="st">`</span><span class="sc">$</span>coef</span>
+<span id="cb92-10"><a href="#cb92-10" aria-hidden="true" tabindex="-1"></a>beta9.hat <span class="ot">&lt;-</span> coef<span class="sc">$</span>smterms<span class="sc">$</span><span class="st">`</span><span class="at">ffpc(aod_lag1,2)1</span><span class="st">`</span><span class="sc">$</span>coef</span>
+<span id="cb92-11"><a href="#cb92-11" aria-hidden="true" tabindex="-1"></a>beta10.hat <span class="ot">&lt;-</span> coef<span class="sc">$</span>smterms<span class="sc">$</span><span class="st">`</span><span class="at">ffpc(hr_lag1,2)1</span><span class="st">`</span><span class="sc">$</span>coef</span>
+<span id="cb92-12"><a href="#cb92-12" aria-hidden="true" tabindex="-1"></a>beta11.hat <span class="ot">&lt;-</span> coef<span class="sc">$</span>smterms<span class="sc">$</span><span class="st">`</span><span class="at">ffpc(hr_lag1,2)2</span><span class="st">`</span><span class="sc">$</span>coef</span></code><button title="Copiar al portapapeles" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</div>
+<div>
+<div class="sourceCode cell-code" id="cb93"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb93-1"><a href="#cb93-1" aria-hidden="true" tabindex="-1"></a><span class="fu">plot</span>(mod_lag1_final, <span class="at">shade =</span> T, <span class="at">shade.col =</span> <span class="st">"lightblue"</span>, <span class="at">xlab =</span> <span class="st">"Semana"</span>, <span class="at">ylab =</span> <span class="st">"Intercepto"</span>, <span class="at">select =</span> <span class="dv">1</span>, <span class="at">ylim =</span> <span class="fu">c</span>(<span class="sc">-</span><span class="fl">0.2</span>,<span class="fl">0.2</span>))</span>
+<span id="cb93-2"><a href="#cb93-2" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb93-3"><a href="#cb93-3" aria-hidden="true" tabindex="-1"></a><span class="fu">plot</span>(mod_lag1_final, <span class="at">shade =</span> T, <span class="at">shade.col =</span> <span class="st">"lightblue"</span>, <span class="at">xlab =</span> <span class="st">"Semana"</span>, <span class="at">ylab =</span> <span class="st">"PC1: Temperatura máxima media"</span>, <span class="at">select =</span> <span class="dv">2</span>, <span class="at">ylim =</span> <span class="fu">c</span>(<span class="sc">-</span><span class="dv">2</span>,<span class="dv">2</span>))</span>
+<span id="cb93-4"><a href="#cb93-4" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb93-5"><a href="#cb93-5" aria-hidden="true" tabindex="-1"></a><span class="fu">plot</span>(mod_lag1_final, <span class="at">shade =</span> T, <span class="at">shade.col =</span> <span class="st">"lightblue"</span>, <span class="at">xlab =</span> <span class="st">"Semana"</span>, <span class="at">ylab =</span> <span class="st">"PC1: Temperatura mínima media"</span>, <span class="at">select =</span> <span class="dv">3</span>, <span class="at">ylim =</span> <span class="fu">c</span>(<span class="sc">-</span><span class="dv">2</span>,<span class="dv">2</span>))</span>
+<span id="cb93-6"><a href="#cb93-6" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb93-7"><a href="#cb93-7" aria-hidden="true" tabindex="-1"></a><span class="fu">plot</span>(mod_lag1_final, <span class="at">shade =</span> T, <span class="at">shade.col =</span> <span class="st">"lightblue"</span>, <span class="at">xlab =</span> <span class="st">"Semana"</span>, <span class="at">ylab =</span> <span class="st">"PC2: Temperatura mínima media"</span>, <span class="at">select =</span> <span class="dv">4</span>, <span class="at">ylim =</span> <span class="fu">c</span>(<span class="sc">-</span><span class="fl">0.5</span>,<span class="fl">0.5</span>))</span>
+<span id="cb93-8"><a href="#cb93-8" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb93-9"><a href="#cb93-9" aria-hidden="true" tabindex="-1"></a><span class="fu">plot</span>(mod_lag1_final, <span class="at">shade =</span> T, <span class="at">shade.col =</span> <span class="st">"lightblue"</span>, <span class="at">xlab =</span> <span class="st">"Semana"</span>, <span class="at">ylab =</span> <span class="st">"PC1: Precipitación media"</span>, <span class="at">select =</span> <span class="dv">5</span>, <span class="at">ylim =</span> <span class="fu">c</span>(<span class="sc">-</span><span class="fl">0.3</span>,<span class="fl">0.3</span>))</span>
+<span id="cb93-10"><a href="#cb93-10" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb93-11"><a href="#cb93-11" aria-hidden="true" tabindex="-1"></a><span class="fu">plot</span>(mod_lag1_final, <span class="at">shade =</span> T, <span class="at">shade.col =</span> <span class="st">"lightblue"</span>, <span class="at">xlab =</span> <span class="st">"Semana"</span>, <span class="at">ylab =</span> <span class="st">"PC1: Amplitud de la temperatura máxima media"</span>, <span class="at">select =</span> <span class="dv">6</span>, <span class="at">ylim =</span> <span class="fu">c</span>(<span class="sc">-</span><span class="dv">1</span>,<span class="dv">1</span>))</span>
+<span id="cb93-12"><a href="#cb93-12" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb93-13"><a href="#cb93-13" aria-hidden="true" tabindex="-1"></a><span class="fu">plot</span>(mod_lag1_final, <span class="at">shade =</span> T, <span class="at">shade.col =</span> <span class="st">"lightblue"</span>, <span class="at">xlab =</span> <span class="st">"Semana"</span>, <span class="at">ylab =</span> <span class="st">"PC2: Amplitud de la temperatura máxima media"</span>, <span class="at">select =</span> <span class="dv">7</span>, <span class="at">ylim =</span> <span class="fu">c</span>(<span class="sc">-</span><span class="dv">1</span>,<span class="dv">1</span>))</span>
+<span id="cb93-14"><a href="#cb93-14" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb93-15"><a href="#cb93-15" aria-hidden="true" tabindex="-1"></a><span class="fu">plot</span>(mod_lag1_final, <span class="at">shade =</span> T, <span class="at">shade.col =</span> <span class="st">"lightblue"</span>, <span class="at">xlab =</span> <span class="st">"Semana"</span>, <span class="at">ylab =</span> <span class="st">"PC1: Amplitud de la temperatura mínima media"</span>, <span class="at">select =</span> <span class="dv">8</span>, <span class="at">ylim =</span> <span class="fu">c</span>(<span class="sc">-</span><span class="dv">1</span>,<span class="dv">1</span>))</span>
+<span id="cb93-16"><a href="#cb93-16" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb93-17"><a href="#cb93-17" aria-hidden="true" tabindex="-1"></a><span class="fu">plot</span>(mod_lag1_final, <span class="at">shade =</span> T, <span class="at">shade.col =</span> <span class="st">"lightblue"</span>, <span class="at">xlab =</span> <span class="st">"Semana"</span>, <span class="at">ylab =</span> <span class="st">"PC2: Amplitud de la temperatura mínima media"</span>, <span class="at">select =</span> <span class="dv">9</span>, <span class="at">ylim =</span> <span class="fu">c</span>(<span class="sc">-</span><span class="dv">1</span>,<span class="dv">1</span>))</span>
+<span id="cb93-18"><a href="#cb93-18" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb93-19"><a href="#cb93-19" aria-hidden="true" tabindex="-1"></a><span class="fu">plot</span>(mod_lag1_final, <span class="at">shade =</span> T, <span class="at">shade.col =</span> <span class="st">"lightblue"</span>, <span class="at">xlab =</span> <span class="st">"Semana"</span>, <span class="at">ylab =</span> <span class="st">"PC1: Profundidad óptica de aerosoles"</span>, <span class="at">select =</span> <span class="dv">10</span>, <span class="at">ylim =</span> <span class="fu">c</span>(<span class="sc">-</span><span class="fl">0.5</span>,<span class="fl">0.5</span>))</span>
+<span id="cb93-20"><a href="#cb93-20" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb93-21"><a href="#cb93-21" aria-hidden="true" tabindex="-1"></a><span class="fu">plot</span>(mod_lag1_final, <span class="at">shade =</span> T, <span class="at">shade.col =</span> <span class="st">"lightblue"</span>, <span class="at">xlab =</span> <span class="st">"Semana"</span>, <span class="at">ylab =</span> <span class="st">"PC1: Humedad Relativa"</span>, <span class="at">select =</span> <span class="dv">11</span>, <span class="at">ylim =</span> <span class="fu">c</span>(<span class="sc">-</span><span class="dv">40</span>,<span class="dv">40</span>))</span>
+<span id="cb93-22"><a href="#cb93-22" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb93-23"><a href="#cb93-23" aria-hidden="true" tabindex="-1"></a><span class="fu">plot</span>(mod_lag1_final, <span class="at">shade =</span> T, <span class="at">shade.col =</span> <span class="st">"lightblue"</span>, <span class="at">xlab =</span> <span class="st">"Semana"</span>, <span class="at">ylab =</span> <span class="st">"PC2: Humedad relativa"</span>, <span class="at">select =</span> <span class="dv">12</span>, <span class="at">ylim =</span> <span class="fu">c</span>(<span class="sc">-</span><span class="dv">20</span>,<span class="dv">20</span>))</span></code><button title="Copiar al portapapeles" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div id="fig-mod_lag1_bn1" class="cell quarto-layout-panel" data-fig.layout="grid">
+<figure class="figure">
+<div class="quarto-layout-row quarto-layout-valign-top">
+<div class="cell-output-display quarto-layout-cell quarto-layout-cell-subref" style="flex-basis: 25.0%;justify-content: center;">
+<div id="fig-mod_lag1_bn1-1" class="quarto-figure quarto-figure-center anchored">
+<figure class="figure">
+<p><img src="Regresion-lag1_files/figure-html/fig-mod_lag1_bn1-1.png" class="img-fluid figure-img" data-ref-parent="fig-mod_lag1_bn1" width="672"></p>
+<figcaption class="figure-caption">(a) Intercepto</figcaption>
+</figure>
+</div>
+</div>
+<div class="cell-output-display quarto-layout-cell quarto-layout-cell-subref" style="flex-basis: 25.0%;justify-content: center;">
+<div id="fig-mod_lag1_bn1-2" class="quarto-figure quarto-figure-center anchored">
+<figure class="figure">
+<p><img src="Regresion-lag1_files/figure-html/fig-mod_lag1_bn1-2.png" class="img-fluid figure-img" data-ref-parent="fig-mod_lag1_bn1" width="672"></p>
+<figcaption class="figure-caption">(b) PC1: Tmax_mean</figcaption>
+</figure>
+</div>
+</div>
+<div class="cell-output-display quarto-layout-cell quarto-layout-cell-subref" style="flex-basis: 25.0%;justify-content: center;">
+<div id="fig-mod_lag1_bn1-3" class="quarto-figure quarto-figure-center anchored">
+<figure class="figure">
+<p><img src="Regresion-lag1_files/figure-html/fig-mod_lag1_bn1-3.png" class="img-fluid figure-img" data-ref-parent="fig-mod_lag1_bn1" width="672"></p>
+<figcaption class="figure-caption">(c) PC1: Tmin_mean</figcaption>
+</figure>
+</div>
+</div>
+<div class="cell-output-display quarto-layout-cell quarto-layout-cell-subref" style="flex-basis: 25.0%;justify-content: center;">
+<div id="fig-mod_lag1_bn1-4" class="quarto-figure quarto-figure-center anchored">
+<figure class="figure">
+<p><img src="Regresion-lag1_files/figure-html/fig-mod_lag1_bn1-4.png" class="img-fluid figure-img" data-ref-parent="fig-mod_lag1_bn1" width="672"></p>
+<figcaption class="figure-caption">(d) PC2: Tmin_mean</figcaption>
+</figure>
+</div>
+</div>
+</div>
+<div class="quarto-layout-row quarto-layout-valign-top">
+<div class="cell-output-display quarto-layout-cell quarto-layout-cell-subref" style="flex-basis: 25.0%;justify-content: center;">
+<div id="fig-mod_lag1_bn1-5" class="quarto-figure quarto-figure-center anchored">
+<figure class="figure">
+<p><img src="Regresion-lag1_files/figure-html/fig-mod_lag1_bn1-5.png" class="img-fluid figure-img" data-ref-parent="fig-mod_lag1_bn1" width="672"></p>
+<figcaption class="figure-caption">(e) PC1: Precip_mean</figcaption>
+</figure>
+</div>
+</div>
+<div class="cell-output-display quarto-layout-cell quarto-layout-cell-subref" style="flex-basis: 25.0%;justify-content: center;">
+<div id="fig-mod_lag1_bn1-6" class="quarto-figure quarto-figure-center anchored">
+<figure class="figure">
+<p><img src="Regresion-lag1_files/figure-html/fig-mod_lag1_bn1-6.png" class="img-fluid figure-img" data-ref-parent="fig-mod_lag1_bn1" width="672"></p>
+<figcaption class="figure-caption">(f) PC1: Amp_max_mean</figcaption>
+</figure>
+</div>
+</div>
+<div class="cell-output-display quarto-layout-cell quarto-layout-cell-subref" style="flex-basis: 25.0%;justify-content: center;">
+<div id="fig-mod_lag1_bn1-7" class="quarto-figure quarto-figure-center anchored">
+<figure class="figure">
+<p><img src="Regresion-lag1_files/figure-html/fig-mod_lag1_bn1-7.png" class="img-fluid figure-img" data-ref-parent="fig-mod_lag1_bn1" width="672"></p>
+<figcaption class="figure-caption">(g) PC2: Amp_max_mean</figcaption>
+</figure>
+</div>
+</div>
+<div class="cell-output-display quarto-layout-cell quarto-layout-cell-subref" style="flex-basis: 25.0%;justify-content: center;">
+<div id="fig-mod_lag1_bn1-8" class="quarto-figure quarto-figure-center anchored">
+<figure class="figure">
+<p><img src="Regresion-lag1_files/figure-html/fig-mod_lag1_bn1-8.png" class="img-fluid figure-img" data-ref-parent="fig-mod_lag1_bn1" width="672"></p>
+<figcaption class="figure-caption">(h) PC1: Amp_min_mean</figcaption>
+</figure>
+</div>
+</div>
+</div>
+<div class="quarto-layout-row quarto-layout-valign-top">
+<div class="cell-output-display quarto-layout-cell quarto-layout-cell-subref" style="flex-basis: 25.0%;justify-content: center;">
+<div id="fig-mod_lag1_bn1-9" class="quarto-figure quarto-figure-center anchored">
+<figure class="figure">
+<p><img src="Regresion-lag1_files/figure-html/fig-mod_lag1_bn1-9.png" class="img-fluid figure-img" data-ref-parent="fig-mod_lag1_bn1" width="672"></p>
+<figcaption class="figure-caption">(i) PC2: Amp_min_mean</figcaption>
+</figure>
+</div>
+</div>
+<div class="cell-output-display quarto-layout-cell quarto-layout-cell-subref" style="flex-basis: 25.0%;justify-content: center;">
+<div id="fig-mod_lag1_bn1-10" class="quarto-figure quarto-figure-center anchored">
+<figure class="figure">
+<p><img src="Regresion-lag1_files/figure-html/fig-mod_lag1_bn1-10.png" class="img-fluid figure-img" data-ref-parent="fig-mod_lag1_bn1" width="672"></p>
+<figcaption class="figure-caption">(j) PC1: AOD</figcaption>
+</figure>
+</div>
+</div>
+<div class="cell-output-display quarto-layout-cell quarto-layout-cell-subref" style="flex-basis: 25.0%;justify-content: center;">
+<div id="fig-mod_lag1_bn1-11" class="quarto-figure quarto-figure-center anchored">
+<figure class="figure">
+<p><img src="Regresion-lag1_files/figure-html/fig-mod_lag1_bn1-11.png" class="img-fluid figure-img" data-ref-parent="fig-mod_lag1_bn1" width="672"></p>
+<figcaption class="figure-caption">(k) PC1: HR</figcaption>
+</figure>
+</div>
+</div>
+<div class="cell-output-display quarto-layout-cell quarto-layout-cell-subref" style="flex-basis: 25.0%;justify-content: center;">
+<div id="fig-mod_lag1_bn1-12" class="quarto-figure quarto-figure-center anchored">
+<figure class="figure">
+<p><img src="Regresion-lag1_files/figure-html/fig-mod_lag1_bn1-12.png" class="img-fluid figure-img" data-ref-parent="fig-mod_lag1_bn1" width="672"></p>
+<figcaption class="figure-caption">(l) PC2: HR</figcaption>
+</figure>
+</div>
+</div>
+</div>
+<p></p><figcaption class="figure-caption">Figura&nbsp;15: Coeficientes funcionales</figcaption><p></p>
+</figure>
+</div>
+</div>
+<div>
+<div class="sourceCode cell-code" id="cb94"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb94-1"><a href="#cb94-1" aria-hidden="true" tabindex="-1"></a>yhat_final <span class="ot">&lt;-</span> <span class="fu">predict</span>(mod_lag1_final, <span class="at">type =</span> <span class="st">"response"</span>)</span>
+<span id="cb94-2"><a href="#cb94-2" aria-hidden="true" tabindex="-1"></a><span class="cf">for</span>(i <span class="cf">in</span> <span class="dv">1</span><span class="sc">:</span><span class="dv">20</span>){</span>
+<span id="cb94-3"><a href="#cb94-3" aria-hidden="true" tabindex="-1"></a><span class="fu">plot</span>(week, base<span class="sc">$</span>Y[i,], </span>
+<span id="cb94-4"><a href="#cb94-4" aria-hidden="true" tabindex="-1"></a>     <span class="at">type =</span> <span class="st">"l"</span>, <span class="at">lwd =</span> <span class="fl">1.5</span>, </span>
+<span id="cb94-5"><a href="#cb94-5" aria-hidden="true" tabindex="-1"></a>     <span class="at">col =</span> <span class="fu">rgb</span>(<span class="dv">0</span>, <span class="dv">0</span>, <span class="dv">0</span>, <span class="at">alpha =</span> <span class="fl">0.1</span>), <span class="at">cex =</span> <span class="dv">1</span>, </span>
+<span id="cb94-6"><a href="#cb94-6" aria-hidden="true" tabindex="-1"></a>     <span class="at">xlab =</span> <span class="st">"Semanas"</span>, </span>
+<span id="cb94-7"><a href="#cb94-7" aria-hidden="true" tabindex="-1"></a>     <span class="at">ylab =</span> <span class="st">"Hospitalizaciones"</span>, <span class="at">bty =</span> <span class="st">"n"</span>)</span>
+<span id="cb94-8"><a href="#cb94-8" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb94-9"><a href="#cb94-9" aria-hidden="true" tabindex="-1"></a><span class="co"># Graficar los datos antes del corte </span></span>
+<span id="cb94-10"><a href="#cb94-10" aria-hidden="true" tabindex="-1"></a><span class="fu">lines</span>(week, base<span class="sc">$</span>Y[i,], </span>
+<span id="cb94-11"><a href="#cb94-11" aria-hidden="true" tabindex="-1"></a>      <span class="at">pch =</span> <span class="dv">19</span>, <span class="at">cex =</span> <span class="fl">0.8</span>)</span>
+<span id="cb94-12"><a href="#cb94-12" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb94-13"><a href="#cb94-13" aria-hidden="true" tabindex="-1"></a><span class="co"># Agregar la predicción del modelo pffr</span></span>
+<span id="cb94-14"><a href="#cb94-14" aria-hidden="true" tabindex="-1"></a><span class="fu">lines</span>(week, </span>
+<span id="cb94-15"><a href="#cb94-15" aria-hidden="true" tabindex="-1"></a>      yhat_final[i,], <span class="at">lwd =</span> <span class="fl">2.5</span>, <span class="at">col =</span> <span class="st">"darkred"</span>)}</span></code><button title="Copiar al portapapeles" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div id="fig-supuesto_fin5" class="cell quarto-layout-panel" data-fig.layout="grid">
+<figure class="figure">
+<div class="quarto-layout-row quarto-layout-valign-top">
+<div class="cell-output-display quarto-layout-cell quarto-layout-cell-subref" style="flex-basis: 25.0%;justify-content: center;">
+<div id="fig-supuesto_fin5-1" class="quarto-figure quarto-figure-center anchored">
+<figure class="figure">
+<p><img src="Regresion-lag1_files/figure-html/fig-supuesto_fin5-1.png" class="img-fluid figure-img" data-ref-parent="fig-supuesto_fin5" width="672"></p>
+<figcaption class="figure-caption">(a) 2000</figcaption>
+</figure>
+</div>
+</div>
+<div class="cell-output-display quarto-layout-cell quarto-layout-cell-subref" style="flex-basis: 25.0%;justify-content: center;">
+<div id="fig-supuesto_fin5-2" class="quarto-figure quarto-figure-center anchored">
+<figure class="figure">
+<p><img src="Regresion-lag1_files/figure-html/fig-supuesto_fin5-2.png" class="img-fluid figure-img" data-ref-parent="fig-supuesto_fin5" width="672"></p>
+<figcaption class="figure-caption">(b) 2001</figcaption>
+</figure>
+</div>
+</div>
+<div class="cell-output-display quarto-layout-cell quarto-layout-cell-subref" style="flex-basis: 25.0%;justify-content: center;">
+<div id="fig-supuesto_fin5-3" class="quarto-figure quarto-figure-center anchored">
+<figure class="figure">
+<p><img src="Regresion-lag1_files/figure-html/fig-supuesto_fin5-3.png" class="img-fluid figure-img" data-ref-parent="fig-supuesto_fin5" width="672"></p>
+<figcaption class="figure-caption">(c) 2002</figcaption>
+</figure>
+</div>
+</div>
+<div class="cell-output-display quarto-layout-cell quarto-layout-cell-subref" style="flex-basis: 25.0%;justify-content: center;">
+<div id="fig-supuesto_fin5-4" class="quarto-figure quarto-figure-center anchored">
+<figure class="figure">
+<p><img src="Regresion-lag1_files/figure-html/fig-supuesto_fin5-4.png" class="img-fluid figure-img" data-ref-parent="fig-supuesto_fin5" width="672"></p>
+<figcaption class="figure-caption">(d) 2003</figcaption>
+</figure>
+</div>
+</div>
+</div>
+<div class="quarto-layout-row quarto-layout-valign-top">
+<div class="cell-output-display quarto-layout-cell quarto-layout-cell-subref" style="flex-basis: 25.0%;justify-content: center;">
+<div id="fig-supuesto_fin5-5" class="quarto-figure quarto-figure-center anchored">
+<figure class="figure">
+<p><img src="Regresion-lag1_files/figure-html/fig-supuesto_fin5-5.png" class="img-fluid figure-img" data-ref-parent="fig-supuesto_fin5" width="672"></p>
+<figcaption class="figure-caption">(e) 2004</figcaption>
+</figure>
+</div>
+</div>
+<div class="cell-output-display quarto-layout-cell quarto-layout-cell-subref" style="flex-basis: 25.0%;justify-content: center;">
+<div id="fig-supuesto_fin5-6" class="quarto-figure quarto-figure-center anchored">
+<figure class="figure">
+<p><img src="Regresion-lag1_files/figure-html/fig-supuesto_fin5-6.png" class="img-fluid figure-img" data-ref-parent="fig-supuesto_fin5" width="672"></p>
+<figcaption class="figure-caption">(f) 2005</figcaption>
+</figure>
+</div>
+</div>
+<div class="cell-output-display quarto-layout-cell quarto-layout-cell-subref" style="flex-basis: 25.0%;justify-content: center;">
+<div id="fig-supuesto_fin5-7" class="quarto-figure quarto-figure-center anchored">
+<figure class="figure">
+<p><img src="Regresion-lag1_files/figure-html/fig-supuesto_fin5-7.png" class="img-fluid figure-img" data-ref-parent="fig-supuesto_fin5" width="672"></p>
+<figcaption class="figure-caption">(g) 2006</figcaption>
+</figure>
+</div>
+</div>
+<div class="cell-output-display quarto-layout-cell quarto-layout-cell-subref" style="flex-basis: 25.0%;justify-content: center;">
+<div id="fig-supuesto_fin5-8" class="quarto-figure quarto-figure-center anchored">
+<figure class="figure">
+<p><img src="Regresion-lag1_files/figure-html/fig-supuesto_fin5-8.png" class="img-fluid figure-img" data-ref-parent="fig-supuesto_fin5" width="672"></p>
+<figcaption class="figure-caption">(h) 2007</figcaption>
+</figure>
+</div>
+</div>
+</div>
+<div class="quarto-layout-row quarto-layout-valign-top">
+<div class="cell-output-display quarto-layout-cell quarto-layout-cell-subref" style="flex-basis: 25.0%;justify-content: center;">
+<div id="fig-supuesto_fin5-9" class="quarto-figure quarto-figure-center anchored">
+<figure class="figure">
+<p><img src="Regresion-lag1_files/figure-html/fig-supuesto_fin5-9.png" class="img-fluid figure-img" data-ref-parent="fig-supuesto_fin5" width="672"></p>
+<figcaption class="figure-caption">(i) 2008</figcaption>
+</figure>
+</div>
+</div>
+<div class="cell-output-display quarto-layout-cell quarto-layout-cell-subref" style="flex-basis: 25.0%;justify-content: center;">
+<div id="fig-supuesto_fin5-10" class="quarto-figure quarto-figure-center anchored">
+<figure class="figure">
+<p><img src="Regresion-lag1_files/figure-html/fig-supuesto_fin5-10.png" class="img-fluid figure-img" data-ref-parent="fig-supuesto_fin5" width="672"></p>
+<figcaption class="figure-caption">(j) 2009</figcaption>
+</figure>
+</div>
+</div>
+<div class="cell-output-display quarto-layout-cell quarto-layout-cell-subref" style="flex-basis: 25.0%;justify-content: center;">
+<div id="fig-supuesto_fin5-11" class="quarto-figure quarto-figure-center anchored">
+<figure class="figure">
+<p><img src="Regresion-lag1_files/figure-html/fig-supuesto_fin5-11.png" class="img-fluid figure-img" data-ref-parent="fig-supuesto_fin5" width="672"></p>
+<figcaption class="figure-caption">(k) 2010</figcaption>
+</figure>
+</div>
+</div>
+<div class="cell-output-display quarto-layout-cell quarto-layout-cell-subref" style="flex-basis: 25.0%;justify-content: center;">
+<div id="fig-supuesto_fin5-12" class="quarto-figure quarto-figure-center anchored">
+<figure class="figure">
+<p><img src="Regresion-lag1_files/figure-html/fig-supuesto_fin5-12.png" class="img-fluid figure-img" data-ref-parent="fig-supuesto_fin5" width="672"></p>
+<figcaption class="figure-caption">(l) 2011</figcaption>
+</figure>
+</div>
+</div>
+</div>
+<div class="quarto-layout-row quarto-layout-valign-top">
+<div class="cell-output-display quarto-layout-cell quarto-layout-cell-subref" style="flex-basis: 25.0%;justify-content: center;">
+<div id="fig-supuesto_fin5-13" class="quarto-figure quarto-figure-center anchored">
+<figure class="figure">
+<p><img src="Regresion-lag1_files/figure-html/fig-supuesto_fin5-13.png" class="img-fluid figure-img" data-ref-parent="fig-supuesto_fin5" width="672"></p>
+<figcaption class="figure-caption">(m) 2012</figcaption>
+</figure>
+</div>
+</div>
+<div class="cell-output-display quarto-layout-cell quarto-layout-cell-subref" style="flex-basis: 25.0%;justify-content: center;">
+<div id="fig-supuesto_fin5-14" class="quarto-figure quarto-figure-center anchored">
+<figure class="figure">
+<p><img src="Regresion-lag1_files/figure-html/fig-supuesto_fin5-14.png" class="img-fluid figure-img" data-ref-parent="fig-supuesto_fin5" width="672"></p>
+<figcaption class="figure-caption">(n) 2013</figcaption>
+</figure>
+</div>
+</div>
+<div class="cell-output-display quarto-layout-cell quarto-layout-cell-subref" style="flex-basis: 25.0%;justify-content: center;">
+<div id="fig-supuesto_fin5-15" class="quarto-figure quarto-figure-center anchored">
+<figure class="figure">
+<p><img src="Regresion-lag1_files/figure-html/fig-supuesto_fin5-15.png" class="img-fluid figure-img" data-ref-parent="fig-supuesto_fin5" width="672"></p>
+<figcaption class="figure-caption">(o) 2014</figcaption>
+</figure>
+</div>
+</div>
+<div class="cell-output-display quarto-layout-cell quarto-layout-cell-subref" style="flex-basis: 25.0%;justify-content: center;">
+<div id="fig-supuesto_fin5-16" class="quarto-figure quarto-figure-center anchored">
+<figure class="figure">
+<p><img src="Regresion-lag1_files/figure-html/fig-supuesto_fin5-16.png" class="img-fluid figure-img" data-ref-parent="fig-supuesto_fin5" width="672"></p>
+<figcaption class="figure-caption">(p) 2015</figcaption>
+</figure>
+</div>
+</div>
+</div>
+<div class="quarto-layout-row quarto-layout-valign-top">
+<div class="cell-output-display quarto-layout-cell quarto-layout-cell-subref" style="flex-basis: 25.0%;justify-content: center;">
+<div id="fig-supuesto_fin5-17" class="quarto-figure quarto-figure-center anchored">
+<figure class="figure">
+<p><img src="Regresion-lag1_files/figure-html/fig-supuesto_fin5-17.png" class="img-fluid figure-img" data-ref-parent="fig-supuesto_fin5" width="672"></p>
+<figcaption class="figure-caption">(q) 2016</figcaption>
+</figure>
+</div>
+</div>
+<div class="cell-output-display quarto-layout-cell quarto-layout-cell-subref" style="flex-basis: 25.0%;justify-content: center;">
+<div id="fig-supuesto_fin5-18" class="quarto-figure quarto-figure-center anchored">
+<figure class="figure">
+<p><img src="Regresion-lag1_files/figure-html/fig-supuesto_fin5-18.png" class="img-fluid figure-img" data-ref-parent="fig-supuesto_fin5" width="672"></p>
+<figcaption class="figure-caption">(r) 2017</figcaption>
+</figure>
+</div>
+</div>
+<div class="cell-output-display quarto-layout-cell quarto-layout-cell-subref" style="flex-basis: 25.0%;justify-content: center;">
+<div id="fig-supuesto_fin5-19" class="quarto-figure quarto-figure-center anchored">
+<figure class="figure">
+<p><img src="Regresion-lag1_files/figure-html/fig-supuesto_fin5-19.png" class="img-fluid figure-img" data-ref-parent="fig-supuesto_fin5" width="672"></p>
+<figcaption class="figure-caption">(s) 2018</figcaption>
+</figure>
+</div>
+</div>
+<div class="cell-output-display quarto-layout-cell quarto-layout-cell-subref" style="flex-basis: 25.0%;justify-content: center;">
+<div id="fig-supuesto_fin5-20" class="quarto-figure quarto-figure-center anchored">
+<figure class="figure">
+<p><img src="Regresion-lag1_files/figure-html/fig-supuesto_fin5-20.png" class="img-fluid figure-img" data-ref-parent="fig-supuesto_fin5" width="672"></p>
+<figcaption class="figure-caption">(t) 2019</figcaption>
+</figure>
+</div>
+</div>
+</div>
+<p></p><figcaption class="figure-caption">Figura&nbsp;16: Curva de hospitalizaciones estimada contra real</figcaption><p></p>
+</figure>
+</div>
+</div>
+</section>
+</section>
+
+</main>
+<!-- /main column -->
+<script id="quarto-html-after-body" type="application/javascript">
+window.document.addEventListener("DOMContentLoaded", function (event) {
+  const toggleBodyColorMode = (bsSheetEl) => {
+    const mode = bsSheetEl.getAttribute("data-mode");
+    const bodyEl = window.document.querySelector("body");
+    if (mode === "dark") {
+      bodyEl.classList.add("quarto-dark");
+      bodyEl.classList.remove("quarto-light");
+    } else {
+      bodyEl.classList.add("quarto-light");
+      bodyEl.classList.remove("quarto-dark");
+    }
+  }
+  const toggleBodyColorPrimary = () => {
+    const bsSheetEl = window.document.querySelector("link#quarto-bootstrap");
+    if (bsSheetEl) {
+      toggleBodyColorMode(bsSheetEl);
+    }
+  }
+  toggleBodyColorPrimary();  
+  const icon = "";
+  const anchorJS = new window.AnchorJS();
+  anchorJS.options = {
+    placement: 'right',
+    icon: icon
+  };
+  anchorJS.add('.anchored');
+  const isCodeAnnotation = (el) => {
+    for (const clz of el.classList) {
+      if (clz.startsWith('code-annotation-')) {                     
+        return true;
+      }
+    }
+    return false;
+  }
+  const clipboard = new window.ClipboardJS('.code-copy-button', {
+    text: function(trigger) {
+      const codeEl = trigger.previousElementSibling.cloneNode(true);
+      for (const childEl of codeEl.children) {
+        if (isCodeAnnotation(childEl)) {
+          childEl.remove();
+        }
+      }
+      return codeEl.innerText;
+    }
+  });
+  clipboard.on('success', function(e) {
+    // button target
+    const button = e.trigger;
+    // don't keep focus
+    button.blur();
+    // flash "checked"
+    button.classList.add('code-copy-button-checked');
+    var currentTitle = button.getAttribute("title");
+    button.setAttribute("title", "Copiado");
+    let tooltip;
+    if (window.bootstrap) {
+      button.setAttribute("data-bs-toggle", "tooltip");
+      button.setAttribute("data-bs-placement", "left");
+      button.setAttribute("data-bs-title", "Copiado");
+      tooltip = new bootstrap.Tooltip(button, 
+        { trigger: "manual", 
+          customClass: "code-copy-button-tooltip",
+          offset: [0, -8]});
+      tooltip.show();    
+    }
+    setTimeout(function() {
+      if (tooltip) {
+        tooltip.hide();
+        button.removeAttribute("data-bs-title");
+        button.removeAttribute("data-bs-toggle");
+        button.removeAttribute("data-bs-placement");
+      }
+      button.setAttribute("title", currentTitle);
+      button.classList.remove('code-copy-button-checked');
+    }, 1000);
+    // clear code selection
+    e.clearSelection();
+  });
+  function tippyHover(el, contentFn) {
+    const config = {
+      allowHTML: true,
+      content: contentFn,
+      maxWidth: 500,
+      delay: 100,
+      arrow: false,
+      appendTo: function(el) {
+          return el.parentElement;
+      },
+      interactive: true,
+      interactiveBorder: 10,
+      theme: 'quarto',
+      placement: 'bottom-start'
+    };
+    window.tippy(el, config); 
+  }
+  const noterefs = window.document.querySelectorAll('a[role="doc-noteref"]');
+  for (var i=0; i<noterefs.length; i++) {
+    const ref = noterefs[i];
+    tippyHover(ref, function() {
+      // use id or data attribute instead here
+      let href = ref.getAttribute('data-footnote-href') || ref.getAttribute('href');
+      try { href = new URL(href).hash; } catch {}
+      const id = href.replace(/^#\/?/, "");
+      const note = window.document.getElementById(id);
+      return note.innerHTML;
+    });
+  }
+      let selectedAnnoteEl;
+      const selectorForAnnotation = ( cell, annotation) => {
+        let cellAttr = 'data-code-cell="' + cell + '"';
+        let lineAttr = 'data-code-annotation="' +  annotation + '"';
+        const selector = 'span[' + cellAttr + '][' + lineAttr + ']';
+        return selector;
+      }
+      const selectCodeLines = (annoteEl) => {
+        const doc = window.document;
+        const targetCell = annoteEl.getAttribute("data-target-cell");
+        const targetAnnotation = annoteEl.getAttribute("data-target-annotation");
+        const annoteSpan = window.document.querySelector(selectorForAnnotation(targetCell, targetAnnotation));
+        const lines = annoteSpan.getAttribute("data-code-lines").split(",");
+        const lineIds = lines.map((line) => {
+          return targetCell + "-" + line;
+        })
+        let top = null;
+        let height = null;
+        let parent = null;
+        if (lineIds.length > 0) {
+            //compute the position of the single el (top and bottom and make a div)
+            const el = window.document.getElementById(lineIds[0]);
+            top = el.offsetTop;
+            height = el.offsetHeight;
+            parent = el.parentElement.parentElement;
+          if (lineIds.length > 1) {
+            const lastEl = window.document.getElementById(lineIds[lineIds.length - 1]);
+            const bottom = lastEl.offsetTop + lastEl.offsetHeight;
+            height = bottom - top;
+          }
+          if (top !== null && height !== null && parent !== null) {
+            // cook up a div (if necessary) and position it 
+            let div = window.document.getElementById("code-annotation-line-highlight");
+            if (div === null) {
+              div = window.document.createElement("div");
+              div.setAttribute("id", "code-annotation-line-highlight");
+              div.style.position = 'absolute';
+              parent.appendChild(div);
+            }
+            div.style.top = top - 2 + "px";
+            div.style.height = height + 4 + "px";
+            let gutterDiv = window.document.getElementById("code-annotation-line-highlight-gutter");
+            if (gutterDiv === null) {
+              gutterDiv = window.document.createElement("div");
+              gutterDiv.setAttribute("id", "code-annotation-line-highlight-gutter");
+              gutterDiv.style.position = 'absolute';
+              const codeCell = window.document.getElementById(targetCell);
+              const gutter = codeCell.querySelector('.code-annotation-gutter');
+              gutter.appendChild(gutterDiv);
+            }
+            gutterDiv.style.top = top - 2 + "px";
+            gutterDiv.style.height = height + 4 + "px";
+          }
+          selectedAnnoteEl = annoteEl;
+        }
+      };
+      const unselectCodeLines = () => {
+        const elementsIds = ["code-annotation-line-highlight", "code-annotation-line-highlight-gutter"];
+        elementsIds.forEach((elId) => {
+          const div = window.document.getElementById(elId);
+          if (div) {
+            div.remove();
+          }
+        });
+        selectedAnnoteEl = undefined;
+      };
+      // Attach click handler to the DT
+      const annoteDls = window.document.querySelectorAll('dt[data-target-cell]');
+      for (const annoteDlNode of annoteDls) {
+        annoteDlNode.addEventListener('click', (event) => {
+          const clickedEl = event.target;
+          if (clickedEl !== selectedAnnoteEl) {
+            unselectCodeLines();
+            const activeEl = window.document.querySelector('dt[data-target-cell].code-annotation-active');
+            if (activeEl) {
+              activeEl.classList.remove('code-annotation-active');
+            }
+            selectCodeLines(clickedEl);
+            clickedEl.classList.add('code-annotation-active');
+          } else {
+            // Unselect the line
+            unselectCodeLines();
+            clickedEl.classList.remove('code-annotation-active');
+          }
+        });
+      }
+  const findCites = (el) => {
+    const parentEl = el.parentElement;
+    if (parentEl) {
+      const cites = parentEl.dataset.cites;
+      if (cites) {
+        return {
+          el,
+          cites: cites.split(' ')
+        };
+      } else {
+        return findCites(el.parentElement)
+      }
+    } else {
+      return undefined;
+    }
+  };
+  var bibliorefs = window.document.querySelectorAll('a[role="doc-biblioref"]');
+  for (var i=0; i<bibliorefs.length; i++) {
+    const ref = bibliorefs[i];
+    const citeInfo = findCites(ref);
+    if (citeInfo) {
+      tippyHover(citeInfo.el, function() {
+        var popup = window.document.createElement('div');
+        citeInfo.cites.forEach(function(cite) {
+          var citeDiv = window.document.createElement('div');
+          citeDiv.classList.add('hanging-indent');
+          citeDiv.classList.add('csl-entry');
+          var biblioDiv = window.document.getElementById('ref-' + cite);
+          if (biblioDiv) {
+            citeDiv.innerHTML = biblioDiv.innerHTML;
+          }
+          popup.appendChild(citeDiv);
+        });
+        return popup.innerHTML;
+      });
+    }
+  }
+});
+</script>
+</div> <!-- /content -->
+
+
+
+</body></html>

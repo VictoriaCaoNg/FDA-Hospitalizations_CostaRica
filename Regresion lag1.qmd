@@ -1,0 +1,670 @@
+---
+title: "Regresión con rezago 1"
+author: 
+  - name: "Victoria Cao Ng"
+    affiliation: "Escuela de Estadística, Universidad de Costa Rica"
+  - name: "Shu Wei Chou Chen"
+    affiliation: "Escuela de Estadística, Universidad de Costa Rica"
+format: 
+  html:
+    theme: journal
+lang: es
+editor: visual
+bibliography: referencias.bib
+csl: apa.csl
+link-citations: true
+urlcolor: blue
+toc: true
+toc-depth: 3
+toc-location: left
+toc-title: "Contenido"
+toc-expand: 1
+number-sections: true
+---
+
+# Códigos preliminares
+
+En esta sección, se cargan los paquetes necesarios y los datos.
+
+## Paquetes
+
+```{r}
+#| message: false
+#| warning: false
+library(dplyr)
+library(ggplot2)
+library(ggfortify)
+library(forecast)
+library(fpp2)
+library(data.table)
+library(TTR)
+library(xts)
+library(recipes)
+library(tidyverse)
+library(tidyquant)
+library(timetk)
+library(sweep)
+library(lubridate)
+library(fda)
+library(readxl)
+library(knitr)
+library(refund)
+library(mgcv)
+library(fields)
+library(car)
+library(gratia)
+library(tidyfun)
+library(caret)
+```
+
+## Lectura de datos
+
+```{r}
+load("./Data/datos_finales.RData")
+load("./Data/datos_AOD_HR.Rdata")
+poblacion <- read_xlsx("./Data/Poblacion_Nacional.xlsx")
+datos_finales
+# Remover semana 53
+datos_finales <- datos_finales %>% filter(epi.week!=53)
+```
+
+```{r}
+#| message: false
+#| warning: false
+
+# Respuesta
+week <- 1:52
+y <- datos_finales %>% group_by(year,epi.week) %>% summarise(hospitalizaciones = sum(egreso)) %>% pivot_wider(names_from = epi.week, values_from = hospitalizaciones) %>% arrange(year)
+y <- as.matrix(y)[,-1]
+
+# Covariables
+Tmax_mean <- datos_finales %>% group_by(year, epi.week) %>% summarise(Tmax_mean = mean(Tmax_mean, na.rm = T)) %>% pivot_wider(names_from = epi.week, values_from = Tmax_mean) %>% arrange(year)
+Tmax_mean <- as.matrix(Tmax_mean)[,-1]
+
+Tmin_mean <- datos_finales %>% group_by(year, epi.week) %>% summarise(Tmin_mean = mean(Tmin_mean, na.rm = T)) %>% pivot_wider(names_from = epi.week, values_from = Tmin_mean) %>% arrange(year)
+Tmin_mean <- as.matrix(Tmin_mean)[,-1]
+
+precip_mean <- datos_finales %>% group_by(year, epi.week) %>% summarise(Precip_mean = mean(precip_mean_mean, na.rm = T)) %>% pivot_wider(names_from = epi.week, values_from = Precip_mean) %>% arrange(year)
+precip_mean <- as.matrix(precip_mean)[,-1]
+
+amp_max_mean <- datos_finales %>% group_by(year, epi.week) %>% summarise(amp_max_mean = mean(amplitude_max_mean, na.rm = T)) %>% pivot_wider(names_from = epi.week, values_from = amp_max_mean) %>% arrange(year)
+amp_max_mean <- as.matrix(amp_max_mean)[,-1]
+
+amp_min_mean <- datos_finales %>% group_by(year, epi.week) %>% summarise(amp_min_mean = mean(amplitude_min_mean, na.rm = T)) %>% pivot_wider(names_from = epi.week, values_from = amp_min_mean) %>% arrange(year)
+amp_min_mean <- as.matrix(amp_min_mean)[,-1]
+
+AOD <- datos_aerosol %>% pivot_wider(names_from = week, values_from = aerosol) %>% arrange(year)
+AOD <- as.matrix(AOD)[,-1]
+AOD <- scale(AOD, center = T, scale = T)
+
+HR <- datos_HR_finales %>% pivot_wider(names_from = week, values_from = RH) %>% arrange(year)
+HR <- as.matrix(HR)[,-1]
+```
+
+```{r}
+base <- list()
+base$Y <- y
+base$Tmax <- Tmax_mean
+base$Tmin <- Tmin_mean
+base$precip <- precip_mean
+base$amp_max_mean <- amp_max_mean
+base$amp_min_mean <- amp_min_mean
+base$aerosol <- AOD
+base$HR <- HR
+```
+
+## Covariables rezagadas
+
+Con el fin de explorar posibles efectos retardados, se ajustaron modelos que incorporan las covariables meteorológicas rezagadas una semana. Este análisis se llevó a cabo para cada una de las distribuciones consideradas (normal, Poisson, quasi-Poisson y binomial negativa).
+
+```{r}
+lag_matrix <- function(x, k){
+  cbind(
+    matrix(NA, nrow(x), k),
+    x[, 1:(ncol(x)-k)]
+  )
+}
+```
+
+```{r}
+tmax_lag1  <- lag_matrix(base$Tmax, 1)
+tmin_lag1 <- lag_matrix(base$Tmin, 1)
+precip_lag1  <- lag_matrix(base$precip, 1)
+ampmax_lag1 <- lag_matrix(base$amp_max_mean, 1)
+ampmin_lag1 <- lag_matrix(base$amp_min_mean, 1)
+aod_lag1 <- lag_matrix(base$aerosol, 1)
+hr_lag1 <- lag_matrix(base$HR, 1)
+```
+
+# Modelo de regresión funcional
+
+## Normal
+
+```{r}
+mod_lag1_norm <- pffr(Y ~ ffpc(tmax_lag1, npc = 1) + ffpc(tmin_lag1, npc = 2) + ffpc(precip_lag1, npc = 1) + ffpc(ampmax_lag1, npc = 2) + ffpc(ampmin_lag1, npc = 2) + ffpc(aod_lag1, npc = 2) + ffpc(hr_lag1, npc = 2), data = base, yind = 1:52)
+# ffpc internamente usa fpca.sc para los componentes
+```
+
+```{r}
+summary(mod_lag1_norm)
+```
+
+-   Se puede observar que, con un nivel de significancia del 5%, todos los componentes para todas las covariables tienen un efecto significativo sobre la respuesta funcional, con excepción del segundo componente para AOD.
+
+-   El modelo logra explicar un 70% de la variabilidad total (ajustado).
+
+### Supuestos
+
+```{r}
+residual <- residuals(mod_lag1_norm)
+```
+
+```{r}
+#| fig-cap: "Valores residuales para cada año a lo largo de las 52 semanas"
+#| label: fig-supuesto1
+image.plot(1:52, 1:20, t(residual), 
+           xlab = "Semana", 
+           ylab = "Año",
+           axis.args = list(at = c(-100, -50, 0, 50, 100)),
+           legend.shrink = 0.8,
+           legend.line = -1.5,legend.width  =  0.5)
+# Ideal es que este en cero. Hay residuales grandes. 
+```
+
+```{r}
+#| fig-cap: "QQ-Plot de los residuos"
+#| label: fig-supuesto2
+resid_vec <- as.vector(residual)
+
+qqnorm(resid_vec, main = "")
+qqline(resid_vec, col = "red")
+```
+
+```{r}
+#| fig-cap: "Correlación entre los residuos"
+#| label: fig-supuesto3
+
+#Plot the residual correlations
+corr_res <- cor(residual)
+image.plot(1:52, 1:52, corr_res, 
+           xlab = "Semanas", 
+           ylab = "Semanas", 
+           zlim = c(-1, 1),  
+           axis.args = list(at = seq(-1, 1, by = 0.2)),
+           legend.shrink = 0.8,
+           legend.line = -1.5, 
+           legend.width = 0.5)
+```
+
+```{r}
+#| fig-cap: "Residuales funcionales estimados"
+#| label: fig-supuesto5
+
+t = 52
+res_df <- data.frame(id = rep(1:nrow(residual), each = ncol(residual)),
+                     week = rep(1:t, times = nrow(residual)),
+                     residual = as.vector(t(residual)))
+
+ggplot(res_df, aes(x = week, y = residual, group = id)) + geom_line(alpha = 0.1) + labs(x = "Semana", y = "Residuales") + theme_minimal()
+```
+
+## Poisson
+
+Segundo, se ajustó un modelo con distribución Poisson. Se incluyó un offset de población con el fin de considerar los cambios en el tamaño de la población durante el período de estudio.
+
+```{r}
+mod_lag1_pois <- pffr(Y ~ ffpc(tmax_lag1, npc = 1) + ffpc(tmin_lag1, npc = 2) + ffpc(precip_lag1, npc = 1) + ffpc(ampmax_lag1, npc = 2) + ffpc(ampmin_lag1, npc = 2) + ffpc(aod_lag1, npc = 2) + ffpc(hr_lag1, npc = 2) + offset(log(population)), family = poisson(link = "log"), data = base, yind = 1:52)
+
+```
+
+```{r}
+summary(mod_lag1_pois)
+```
+
+-   Se puede observar que, con un nivel de significancia del 5%, todos los componentes para todas las covariables tienen un efecto significativo sobre la respuesta funcional.
+
+-   El modelo logra explicar un 72% de la variabilidad total (ajustado).
+
+### Supuestos
+
+```{r}
+residual <- residuals(mod_lag1_pois)
+yhat <- predict(mod_lag1_pois, type = "response")
+```
+
+```{r}
+#| fig-cap: "Logaritmo de los residuales vs logaritmo de los valores predichos"
+#| label: fig-supuesto_pois1
+plot(y = log(rowMeans(residual)^2), x = log(rowMeans(yhat)), pch = 16)
+abline(lm(log(rowMeans(residual)^2)~log(rowMeans(yhat))), col = "red")
+```
+
+```{r}
+res <- residuals(mod_lag1_pois, type = "pearson")
+rdf <- df.residual(mod_lag1_pois)           
+
+phi <- sum(res^2) / rdf
+phi
+```
+
+## Quasi-Poisson
+
+```{r}
+mod_lag1_quasi <- pffr(Y ~ ffpc(tmax_lag1, npc = 1) + ffpc(tmin_lag1, npc = 2) + ffpc(precip_lag1, npc = 1) + ffpc(ampmax_lag1, npc = 2) + ffpc(ampmin_lag1, npc = 2) + ffpc(aod_lag1, npc = 2) + ffpc(hr_lag1, npc = 2) + offset(log(population)), family = quasipoisson(link = "log"), data = base, yind = 1:52, method = "REML")
+```
+
+```{r}
+summary(mod_lag1_quasi)
+```
+
+-   Se puede observar que, con un nivel de significancia del 5%, todos los componentes para todas las covariables tienen un efecto significativo sobre la respuesta funcional, con excepción del segundo componente para AOD.
+
+-   El modelo logra explicar un 70% de la variabilidad total (ajustado).
+
+### Supuestos
+
+```{r}
+res2 <- residuals(mod_lag1_quasi)
+```
+
+```{r}
+#| fig-cap: "Valores residuales para cada año a lo largo de las 52 semanas"
+#| label: fig-supuesto_quasi1
+image.plot(1:52, 1:20, t(res2), 
+           xlab = "Semana", 
+           ylab = "Año",
+           zlim = c(-7,7),
+           axis.args = list(at = seq(-7,7, by = 1)),
+           legend.shrink = 0.8,
+           legend.line = -1.5,legend.width  =  0.5)
+```
+
+```{r}
+#| fig-cap: "Correlación entre los residuos"
+#| label: fig-supuesto_quasi2
+
+corr_res2 <- cor(res2)
+image.plot(1:52, 1:52, corr_res2, 
+           xlab = "Semanas", 
+           ylab = "Semanas", 
+           zlim = c(-1, 1),  
+           axis.args = list(at = seq(-1, 1, by = 0.2)),
+           legend.shrink = 0.8,
+           legend.line = -1.5, 
+           legend.width = 0.5)
+```
+
+```{r}
+#| fig-cap: "Residuales funcionales estimados"
+#| label: fig-supuesto_quasi3
+
+res_df2 <- data.frame(id = rep(1:nrow(res2), each = ncol(res2)),
+                     week = rep(1:t, times = nrow(res2)),
+                     residual = as.vector(t(res2)))
+
+ggplot(res_df2, aes(x = week, y = residual, group = id)) + geom_line(alpha = 0.1) + labs(x = "Semana", y = "Residuales") + theme_minimal()
+```
+
+## Binomial Negativa
+
+El modelo con distribución binomial negativa es otra forma de tomar en cuenta la sobredispersión presente en los datos. En este modelo también se incluye un offset de población.
+
+```{r}
+mod_lag1_bn <- pffr(Y ~ ffpc(tmax_lag1, npc = 1) + ffpc(tmin_lag1, npc = 2) + ffpc(precip_lag1, npc = 1) + ffpc(ampmax_lag1, npc = 2) + ffpc(ampmin_lag1, npc = 2) + ffpc(aod_lag1, npc = 2) + ffpc(hr_lag1, npc = 2) + offset(log(population)), family = nb(), data = base, yind = 1:52)
+```
+
+```{r}
+summary(mod_lag1_bn)
+```
+
+-   Se puede observar que, con un nivel de significancia del 5%, todos los componentes para todas las covariables tienen un efecto significativo sobre la respuesta funcional, con excepción del segundo componente para AOD.
+
+-   El modelo logra explicar un 70% de la variabilidad total (ajustado).
+
+### Supuestos
+
+```{r}
+residual <- residuals(mod_lag1_bn)
+```
+
+```{r}
+#| fig-cap: "Valores residuales para cada año a lo largo de las 52 semanas"
+#| label: fig-supuesto_bn1
+image.plot(1:52, 1:20, t(residual), 
+           xlab = "Semana", 
+           ylab = "Año",
+           zlim = c(-4,4),
+           axis.args = list(at = seq(-4,4, by = 1)),
+           legend.shrink = 0.8,
+           legend.line = -1.5,legend.width  =  0.5)
+```
+
+```{r}
+#| fig-cap: "Correlación entre los residuos"
+#| label: fig-supuesto_bn2
+
+corr_res <- cor(residual)
+image.plot(1:52, 1:52, corr_res, 
+           xlab = "Semanas", 
+           ylab = "Semanas", 
+           zlim = c(-1, 1),  
+           axis.args = list(at = seq(-1, 1, by = 0.2)),
+           legend.shrink = 0.8,
+           legend.line = -1.5, 
+           legend.width = 0.5)
+```
+
+```{r}
+#| fig-cap: "Residuales funcionales estimados"
+#| label: fig-supuesto_bn3
+
+t = 52
+res_df <- data.frame(id = rep(1:nrow(residual), each = ncol(residual)),
+                     week = rep(1:t, times = nrow(residual)),
+                     residual = as.vector(t(residual)))
+
+ggplot(res_df, aes(x = week, y = residual, group = id)) + geom_line(alpha = 0.1) + labs(x = "Semana", y = "Residuales") + theme_minimal()
+```
+
+# Modelo final
+
+Para la selección del modelo final se consideró el rendimiento de cada uno, utilizando métricas como el error cuadrático medio (MSE, por sus siglas en inglés), el error absoluto medio (MAE), devianza y el coeficiente de determinación ajustado, además del grado en que cada modelo cumple con sus supuestos. En la tabla se puede observar dichas métricas para cada modelo.
+
+```{r}
+#| warning: false
+#| message: false
+
+# Normal
+yhat_norm <- predict(mod_lag1_norm, type = "response")
+devianza_norm <- deviance(mod_lag1_norm)
+
+fMSE_norm <- mean(rowMeans((base$Y - yhat_norm)^2))
+fMAE_norm <- mean(rowMeans(abs(base$Y - yhat_norm)))
+
+# Poisson
+yhat_pois <- predict(mod_lag1_pois, type = "response")
+devianza_pois <- deviance(mod_lag1_pois)
+
+fMSE_pois <- mean(rowMeans((base$Y - yhat_pois)^2))
+fMAE_pois <- mean(rowMeans(abs(base$Y - yhat_pois)))
+
+# Quasi-poisson
+yhat_quasi <- predict(mod_lag1_quasi, type = "response")
+devianza_quasi <- deviance(mod_lag1_quasi)
+
+fMSE_quasi <- mean(rowMeans((base$Y - yhat_quasi)^2))
+fMAE_quasi <- mean(rowMeans(abs(base$Y - yhat_quasi)))
+
+# Binomial negativa
+yhat_bn <- predict(mod_lag1_bn, type = "response")
+devianza_bn <- deviance(mod_lag1_bn)
+
+fMSE_bn <- mean(rowMeans((base$Y - yhat_bn)^2))
+fMAE_bn <- mean(rowMeans(abs(base$Y - yhat_bn)))
+
+```
+
+```{r}
+#| warning: false
+#| message: false
+#| echo: false
+#| tbl-cap: "Tabla de valores p"
+#| label: tbl-metricas
+
+metricas <- data.frame(Distribución = c("Normal", "Poisson", "Quasi-poisson", "Binomial Negativa"), MSE = c(1680.2,1507.6,1652.7,1673.7), MAE = c(31.8,30.2,31.5,31.6), Devianza = c(1747454.0,3580.8,3912.8,950.7),"R-sq.(adj)" = c("70%", "72%", "70%", "70%"))
+
+kable(metricas)
+```
+
+Además, tomando en cuenta los supuestos, el modelo binomial negativa compensa la sobredispersión y cumple con los otros supuestos de independencia de los residuos. Otra ventaja es que permite el uso de criterios de información como el de Akaike y Bayes, a comparación del modelo quasi-poisson.
+
+Tomando en cuenta estos criterios se escoge el modelo con distribución binomial negativa. Seguidamente, se procede con la selección de variables y número de componentes principales utilizados. La selección de variables se realizará mediante el Criterio de información de Akaike (AIC) y el Criterio de información de Bayes (BIC), donde se elimina una variable a la vez y se compara los valores de AIC y BIC entre los modelos.
+
+```{r}
+AIC(mod_lag1_bn); BIC(mod_lag1_bn)
+```
+
+```{r}
+mod_lag1_bna <- pffr(Y ~ ffpc(tmin_lag1, npc = 2) + ffpc(precip_lag1, npc = 1) + ffpc(ampmax_lag1, npc = 2) + ffpc(ampmin_lag1, npc = 2) + ffpc(aod_lag1, npc = 2) + ffpc(hr_lag1, npc = 2) + offset(log(population)), family = nb(), data = base, yind = 1:52)
+
+AIC(mod_lag1_bna); BIC(mod_lag1_bna)
+```
+
+```{r}
+mod_lag1_bnb <- pffr(Y ~ ffpc(tmax_lag1, npc = 1) + ffpc(precip_lag1, npc = 1) + ffpc(ampmax_lag1, npc = 2) + ffpc(ampmin_lag1, npc = 2) + ffpc(aod_lag1, npc = 2) + ffpc(hr_lag1, npc = 2) + offset(log(population)), family = nb(), data = base, yind = 1:52)
+
+AIC(mod_lag1_bnb); BIC(mod_lag1_bnb)
+```
+
+```{r}
+mod_lag1_bnc <- pffr(Y ~ ffpc(tmax_lag1, npc = 1) + ffpc(tmin_lag1, npc = 2) + ffpc(ampmax_lag1, npc = 2) + ffpc(ampmin_lag1, npc = 2) + ffpc(aod_lag1, npc = 2) + ffpc(hr_lag1, npc = 2) + offset(log(population)), family = nb(), data = base, yind = 1:52)
+
+AIC(mod_lag1_bnc); BIC(mod_lag1_bnc)
+```
+
+```{r}
+mod_lag1_bnd <- pffr(Y ~ ffpc(tmax_lag1, npc = 1) + ffpc(tmin_lag1, npc = 2) + ffpc(precip_lag1, npc = 
+1)  + ffpc(ampmin_lag1, npc = 2) + ffpc(aod_lag1, npc = 2) + ffpc(hr_lag1, npc = 2) + offset(log(population)), family = nb(), data = base, yind = 1:52)
+
+AIC(mod_lag1_bnd); BIC(mod_lag1_bnd)
+```
+
+```{r}
+mod_lag1_bne <- pffr(Y ~ ffpc(tmax_lag1, npc = 1) + ffpc(tmin_lag1, npc = 2) + ffpc(precip_lag1, npc = 
+1) + ffpc(ampmax_lag1, npc = 2) + ffpc(aod_lag1, npc = 2) + ffpc(hr_lag1, npc = 2) + offset(log(population)), family = nb(), data = base, yind = 1:52)
+
+AIC(mod_lag1_bne); BIC(mod_lag1_bne)
+```
+
+```{r}
+mod_lag1_bnf <- pffr(Y ~ ffpc(tmax_lag1, npc = 1) + ffpc(tmin_lag1, npc = 2) + ffpc(precip_lag1, npc = 
+1) + ffpc(ampmax_lag1, npc = 2) + ffpc(ampmin_lag1, npc = 2) + ffpc(hr_lag1, npc = 2) + offset(log(population)), family = nb(), data = base, yind = 1:52)
+
+AIC(mod_lag1_bnf); BIC(mod_lag1_bnf)
+```
+
+```{r}
+mod_lag1_bng <- pffr(Y ~ ffpc(tmax_lag1, npc = 1) + ffpc(tmin_lag1, npc = 2) + ffpc(precip_lag1, npc = 
+1) + ffpc(ampmax_lag1, npc = 2) + ffpc(ampmin_lag1, npc = 2) + ffpc(aod_lag1, npc = 2) + offset(log(population)), family = nb(), data = base, yind = 1:52)
+
+AIC(mod_lag1_bng); BIC(mod_lag1_bng)
+```
+
+Al comparar los valores de AIC y BIC para los dintintos modelos, se concluye que el modelo se mantiene con todas las covariables.
+
+Se prosigue eliminando un componente principal a la vez. Primero se elimina el segundo componente de la variable de aod_lag1, debido a que no resultó significativo.
+
+```{r}
+mod_lag1_bn1 <- pffr(Y ~ ffpc(tmax_lag1, npc = 1) + ffpc(tmin_lag1, npc = 1) + ffpc(precip_lag1, npc = 1) + ffpc(ampmax_lag1, npc = 2) + ffpc(ampmin_lag1, npc = 2) + ffpc(aod_lag1, npc = 1) + ffpc(hr_lag1, npc = 2) + offset(log(population)), family = nb(), data = base, yind = 1:52)
+
+summary(mod_lag1_bn1)$r.sq
+AIC(mod_lag1_bn1); BIC(mod_lag1_bn1)
+```
+
+```{r}
+mod_lag1_bn2 <- pffr(Y ~ ffpc(tmax_lag1, npc = 1) + ffpc(tmin_lag1, npc = 2) + ffpc(precip_lag1, npc = 1) + ffpc(ampmax_lag1, npc = 1) + ffpc(ampmin_lag1, npc = 2) + ffpc(aod_lag1, npc = 1) + ffpc(hr_lag1, npc = 2) + offset(log(population)), family = nb(), data = base, yind = 1:52)
+
+summary(mod_lag1_bn2)$r.sq
+AIC(mod_lag1_bn2); BIC(mod_lag1_bn2)
+```
+
+```{r}
+mod_lag1_bn3 <- pffr(Y ~ ffpc(tmax_lag1, npc = 1) + ffpc(tmin_lag1, npc = 2) + ffpc(precip_lag1, npc = 1) + ffpc(ampmax_lag1, npc = 2) + ffpc(ampmin_lag1, npc = 1) + ffpc(aod_lag1, npc = 1) + ffpc(hr_lag1, npc = 2) + offset(log(population)), family = nb(), data = base, yind = 1:52)
+
+summary(mod_lag1_bn3)$r.sq
+AIC(mod_lag1_bn3); BIC(mod_lag1_bn3)
+```
+
+```{r}
+mod_lag1_bn4 <- pffr(Y ~ ffpc(tmax_lag1, npc = 1) + ffpc(tmin_lag1, npc = 2) + ffpc(precip_lag1, npc = 1) + ffpc(ampmax_lag1, npc = 2) + ffpc(ampmin_lag1, npc = 2) + ffpc(aod_lag1, npc = 1) + ffpc(hr_lag1, npc = 1) + offset(log(population)), family = nb(), data = base, yind = 1:52)
+
+summary(mod_lag1_bn4)$r.sq
+AIC(mod_lag1_bn4); BIC(mod_lag1_bn4)
+```
+
+Al comparar los valores de AIC y BIC de los dintintos modelos, se concluye que el modelo se mantiene con sus componentes restantes.
+
+```{r}
+mod_lag1_final <- pffr(Y ~ ffpc(tmax_lag1, npc = 1) + ffpc(tmin_lag1, npc = 2) + ffpc(precip_lag1, npc = 1) + ffpc(ampmax_lag1, npc = 2) + ffpc(ampmin_lag1, npc = 2) + ffpc(aod_lag1, npc = 1) + ffpc(hr_lag1, npc = 2) + offset(log(poblacion)), family = nb(), data = base, yind = 1:52)
+```
+
+```{r}
+summary(mod_lag1_final)
+```
+
+-   Se puede observar que, con un nivel de significancia del 5%, todos los componentes para todas las covariables tienen un efecto significativo sobre la respuesta funcional.
+
+-   El modelo logra explicar un 70% de la variabilidad total (ajustado).
+
+## Diagnóstico
+
+```{r}
+residual <- residuals(mod_lag1_final) 
+```
+
+```{r}
+#| fig-cap: "Valores residuales para cada año a lo largo de las 52 semanas"
+#| label: fig-supuesto_fin1
+image.plot(1:52, 1:20, t(residual), 
+           xlab = "Semana", 
+           ylab = "Año",
+           zlim = c(-4,4),
+           axis.args = list(at = seq(-4,4, by = 1)),
+           legend.shrink = 0.8,
+           legend.line = -1.5,legend.width  =  0.5)
+```
+
+```{r}
+#| fig-cap: "Correlación entre los residuos"
+#| label: fig-supuesto_fin2
+
+#Plot the residual correlations
+corr_res <- cor(residual)
+image.plot(1:52, 1:52, corr_res, 
+           xlab = "Semanas", 
+           ylab = "Semanas", 
+           zlim = c(-1, 1),  
+           axis.args = list(at = seq(-1, 1, by = 0.2)),
+           legend.shrink = 0.8,
+           legend.line = -1.5, 
+           legend.width = 0.5)
+```
+
+```{r}
+#| fig-cap: "Residuales funcionales estimados"
+#| label: fig-supuesto_fin3
+
+res_df <- data.frame(id = rep(1:nrow(residual), each = ncol(residual)),
+                     week = rep(1:t, times = nrow(residual)),
+                     residual = as.vector(t(residual)))
+
+ggplot(res_df, aes(x = week, y = residual, group = id)) + geom_line(alpha = 0.1) + labs(x = "Semana", y = "Residuales") + theme_minimal()
+```
+
+## Interpretaciones
+
+```{r}
+coef <- coef(mod_lag1_final)
+
+beta0.hat <- coef$smterms$`Intercept(yindex)`$coef
+beta1.hat <- coef$smterms$`ffpc(tmax_lag1,1)1`$coef
+beta2.hat <- coef$smterms$`ffpc(tmin_lag1,1)1`$coef
+beta3.hat <- coef$smterms$`ffpc(tmin_lag1,2)2`$coef
+beta4.hat <- coef$smterms$`ffpc(precip_lag1,1)1`$coef
+beta5.hat <- coef$smterms$`ffpc(ampmax_lag1,2)1`$coef
+beta6.hat <- coef$smterms$`ffpc(ampmax_lag1,2)2`$coef
+beta7.hat <- coef$smterms$`ffpc(ampmin_lag1,2)1`$coef
+beta8.hat <- coef$smterms$`ffpc(ampmin_lag1,2)2`$coef
+beta9.hat <- coef$smterms$`ffpc(aod_lag1,2)1`$coef
+beta10.hat <- coef$smterms$`ffpc(hr_lag1,2)1`$coef
+beta11.hat <- coef$smterms$`ffpc(hr_lag1,2)2`$coef
+
+```
+
+```{r}
+#| fig-cap: "Coeficientes funcionales"
+#| fig-subcap: 
+#|   - "Intercepto"
+#|   - "PC1: Tmax_mean"
+#|   - "PC1: Tmin_mean"
+#|   - "PC2: Tmin_mean"
+#|   - "PC1: Precip_mean"
+#|   - "PC1: Amp_max_mean"
+#|   - "PC2: Amp_max_mean"
+#|   - "PC1: Amp_min_mean"
+#|   - "PC2: Amp_min_mean"
+#|   - "PC1: AOD"
+#|   - "PC1: HR"
+#|   - "PC2: HR"
+#| label: fig-mod_lag1_bn1
+#| fig-layout: "grid"
+#| layout-ncol: 4
+plot(mod_lag1_final, shade = T, shade.col = "lightblue", xlab = "Semana", ylab = "Intercepto", select = 1, ylim = c(-0.2,0.2))
+
+plot(mod_lag1_final, shade = T, shade.col = "lightblue", xlab = "Semana", ylab = "PC1: Temperatura máxima media", select = 2, ylim = c(-2,2))
+
+plot(mod_lag1_final, shade = T, shade.col = "lightblue", xlab = "Semana", ylab = "PC1: Temperatura mínima media", select = 3, ylim = c(-2,2))
+
+plot(mod_lag1_final, shade = T, shade.col = "lightblue", xlab = "Semana", ylab = "PC2: Temperatura mínima media", select = 4, ylim = c(-0.5,0.5))
+
+plot(mod_lag1_final, shade = T, shade.col = "lightblue", xlab = "Semana", ylab = "PC1: Precipitación media", select = 5, ylim = c(-0.3,0.3))
+
+plot(mod_lag1_final, shade = T, shade.col = "lightblue", xlab = "Semana", ylab = "PC1: Amplitud de la temperatura máxima media", select = 6, ylim = c(-1,1))
+
+plot(mod_lag1_final, shade = T, shade.col = "lightblue", xlab = "Semana", ylab = "PC2: Amplitud de la temperatura máxima media", select = 7, ylim = c(-1,1))
+
+plot(mod_lag1_final, shade = T, shade.col = "lightblue", xlab = "Semana", ylab = "PC1: Amplitud de la temperatura mínima media", select = 8, ylim = c(-1,1))
+
+plot(mod_lag1_final, shade = T, shade.col = "lightblue", xlab = "Semana", ylab = "PC2: Amplitud de la temperatura mínima media", select = 9, ylim = c(-1,1))
+
+plot(mod_lag1_final, shade = T, shade.col = "lightblue", xlab = "Semana", ylab = "PC1: Profundidad óptica de aerosoles", select = 10, ylim = c(-0.5,0.5))
+
+plot(mod_lag1_final, shade = T, shade.col = "lightblue", xlab = "Semana", ylab = "PC1: Humedad Relativa", select = 11, ylim = c(-40,40))
+
+plot(mod_lag1_final, shade = T, shade.col = "lightblue", xlab = "Semana", ylab = "PC2: Humedad relativa", select = 12, ylim = c(-20,20))
+
+```
+
+```{r}
+#| fig-cap: "Curva de hospitalizaciones estimada contra real"
+#| fig-subcap: 
+#|   - "2000"
+#|   - "2001"
+#|   - "2002"
+#|   - "2003"
+#|   - "2004"
+#|   - "2005"
+#|   - "2006"
+#|   - "2007"
+#|   - "2008"
+#|   - "2009"
+#|   - "2010"
+#|   - "2011"
+#|   - "2012"
+#|   - "2013"
+#|   - "2014"
+#|   - "2015"
+#|   - "2016"
+#|   - "2017"
+#|   - "2018"
+#|   - "2019"
+#| label: fig-supuesto_fin5
+#| fig-layout: "grid"
+#| layout-ncol: 4
+
+yhat_final <- predict(mod_lag1_final, type = "response")
+for(i in 1:20){
+plot(week, base$Y[i,], 
+     type = "l", lwd = 1.5, 
+     col = rgb(0, 0, 0, alpha = 0.1), cex = 1, 
+     xlab = "Semanas", 
+     ylab = "Hospitalizaciones", bty = "n")
+
+# Graficar los datos antes del corte 
+lines(week, base$Y[i,], 
+      pch = 19, cex = 0.8)
+
+# Agregar la predicción del modelo pffr
+lines(week, 
+      yhat_final[i,], lwd = 2.5, col = "darkred")}
+```
