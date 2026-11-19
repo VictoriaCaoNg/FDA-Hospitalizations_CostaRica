@@ -55,6 +55,7 @@ library(car)
 library(gratia)
 library(tidyfun)
 library(caret)
+library(imputeTS)
 ```
 
 ## Lectura de datos
@@ -63,9 +64,26 @@ library(caret)
 load("./Data/datos_finales.RData")
 load("./Data/datos_AOD_HR.Rdata")
 poblacion <- read_xlsx("./Data/Poblacion_Nacional.xlsx")
-datos_finales
+Rh <- read.csv("./Data/RH_semanal.csv")
 # Remover semana 53
 datos_finales <- datos_finales %>% filter(epi.week!=53)
+```
+
+```{r}
+df <- expand.grid(
+  year = 2000:2019,
+  week = 1:52
+)
+
+# Optional: sort by year and week
+df <- df[order(df$year, df$week), ]
+
+datos_aerosol <- datos_aerosol %>% mutate(aerosol = 
+                                            na_seadec(aerosol))
+
+df_aerosol <- df %>% left_join(datos_aerosol, by = c("year", "week"))
+
+df_aerosol <- df_aerosol %>% mutate(aerosol = na.approx(aerosol, na.rm = FALSE))
 ```
 
 ```{r}
@@ -95,22 +113,35 @@ amp_min_mean <- as.matrix(amp_min_mean)[,-1]
 
 AOD <- datos_aerosol %>% pivot_wider(names_from = week, values_from = aerosol) %>% arrange(year)
 AOD <- as.matrix(AOD)[,-1]
-AOD <- scale(AOD, center = T, scale = T)
+AOD <- AOD/0.001
 
-HR <- datos_HR_finales %>% pivot_wider(names_from = week, values_from = RH) %>% arrange(year)
+Rh <- Rh |> dplyr::select(epiyear, epiweek,RH_mean) |>
+  dplyr::filter(
+    epiyear >= 2000,
+    epiyear <= 2019,
+    epiweek <= 52
+  ) 
+HR <- Rh %>% pivot_wider(names_from = epiweek, values_from = RH_mean) %>% arrange(epiyear)
 HR <- as.matrix(HR)[,-1]
+
+poblacion <- poblacion %>%   
+  dplyr::filter(
+  Year >= 2000,
+  Year <= 2019) %>% dplyr::select(PoblacionCR)
 ```
 
 ```{r}
 base <- list()
 base$Y <- y
-base$Tmax <- Tmax_mean
-base$Tmin <- Tmin_mean
+base$tmax <- Tmax_mean
+base$tmin <- Tmin_mean
 base$precip <- precip_mean
-base$amp_max_mean <- amp_max_mean
-base$amp_min_mean <- amp_min_mean
-base$aerosol <- AOD
-base$HR <- HR
+base$ampmax <- amp_max_mean
+base$ampmin <- amp_min_mean
+base$aod <- AOD
+base$hr <- HR
+base$year <- 1:20
+base$poblacion <- poblacion$PoblacionCR
 ```
 
 ## Covariables rezagadas
@@ -118,22 +149,29 @@ base$HR <- HR
 Con el fin de explorar posibles efectos retardados, se ajustaron modelos que incorporan las covariables meteorológicas rezagadas una semana. Este análisis se llevó a cabo para cada una de las distribuciones consideradas (normal, Poisson, quasi-Poisson y binomial negativa).
 
 ```{r}
-lag_matrix <- function(x, k){
-  cbind(
-    matrix(NA, nrow(x), k),
-    x[, 1:(ncol(x)-k)]
-  )
+lag_mat <- function(M, k = 2) {
+  v <- as.vector(t(M))                    # one continuous weekly series
+  v_lag <- c(rep(NA, k), head(v, -k))
+  out <- matrix(v_lag, nrow = nrow(M), ncol = ncol(M), byrow = TRUE)
+  dimnames(out) <- dimnames(M)
+  out
 }
+
+lag_all <- function(base, k = 2, exclude = "Y", suffix = paste0("_lag", k)) {
+  for (v in setdiff(names(base), exclude)) {
+    x <- base[[v]]
+    if (is.matrix(x)) {
+      lagged <- lag_mat(unclass(x), k)    # unclass() strips AsIs if present
+      base[[paste0(v, suffix)]] <- if (is.data.frame(base)) I(lagged) else lagged
+    }
+  }
+  base
+}
+
 ```
 
 ```{r}
-tmax_lag1  <- lag_matrix(base$Tmax, 1)
-tmin_lag1 <- lag_matrix(base$Tmin, 1)
-precip_lag1  <- lag_matrix(base$precip, 1)
-ampmax_lag1 <- lag_matrix(base$amp_max_mean, 1)
-ampmin_lag1 <- lag_matrix(base$amp_min_mean, 1)
-aod_lag1 <- lag_matrix(base$aerosol, 1)
-hr_lag1 <- lag_matrix(base$HR, 1)
+base_lag1 <- lag_all(base, k = 1)
 ```
 
 # Modelo de regresión funcional
@@ -141,7 +179,7 @@ hr_lag1 <- lag_matrix(base$HR, 1)
 ## Normal
 
 ```{r}
-mod_lag1_norm <- pffr(Y ~ ffpc(tmax_lag1, npc = 1) + ffpc(tmin_lag1, npc = 2) + ffpc(precip_lag1, npc = 1) + ffpc(ampmax_lag1, npc = 2) + ffpc(ampmin_lag1, npc = 2) + ffpc(aod_lag1, npc = 2) + ffpc(hr_lag1, npc = 2), data = base, yind = 1:52)
+mod_lag1_norm <- pffr(Y ~  ffpc(tmax_lag1, npc = 1) + ffpc(tmin_lag1, npc = 2) + ffpc(precip_lag1, npc = 1) + ffpc(ampmax_lag1, npc = 2) + ffpc(ampmin_lag1, npc = 2) + ffpc(aod_lag1, npc = 2) + ffpc(hr_lag1, npc = 2), data = base_lag1, yind = 1:52, sandwich = 'cl2')
 # ffpc internamente usa fpca.sc para los componentes
 ```
 
@@ -149,9 +187,9 @@ mod_lag1_norm <- pffr(Y ~ ffpc(tmax_lag1, npc = 1) + ffpc(tmin_lag1, npc = 2) + 
 summary(mod_lag1_norm)
 ```
 
--   Se puede observar que, con un nivel de significancia del 5%, todos los componentes para todas las covariables tienen un efecto significativo sobre la respuesta funcional, con excepción del segundo componente para AOD.
+-   Se puede observar que, con un nivel de significancia del 5%, los componentes significantes son el primer componente de tmax, ambos componentes de tmin, ambos componentes de amp.max, el primer componente de aod y ambos componentes de hr.
 
--   El modelo logra explicar un 70% de la variabilidad total (ajustado).
+-   El modelo logra explicar un 72% de la variabilidad total (ajustado).
 
 ### Supuestos
 
@@ -213,7 +251,7 @@ ggplot(res_df, aes(x = week, y = residual, group = id)) + geom_line(alpha = 0.1)
 Segundo, se ajustó un modelo con distribución Poisson. Se incluyó un offset de población con el fin de considerar los cambios en el tamaño de la población durante el período de estudio.
 
 ```{r}
-mod_lag1_pois <- pffr(Y ~ ffpc(tmax_lag1, npc = 1) + ffpc(tmin_lag1, npc = 2) + ffpc(precip_lag1, npc = 1) + ffpc(ampmax_lag1, npc = 2) + ffpc(ampmin_lag1, npc = 2) + ffpc(aod_lag1, npc = 2) + ffpc(hr_lag1, npc = 2) + offset(log(population)), family = poisson(link = "log"), data = base, yind = 1:52)
+mod_lag1_pois <- pffr(Y ~  ffpc(tmax_lag1, npc = 1) + ffpc(tmin_lag1, npc = 2) + ffpc(precip_lag1, npc = 1) + ffpc(ampmax_lag1, npc = 2) + ffpc(ampmin_lag1, npc = 2) + ffpc(aod_lag1, npc = 2) + ffpc(hr_lag1, npc = 2) + offset(log(poblacion)), family = poisson(link = "log"), data = base_lag1, yind = 1:52, sandwich = 'cl2')
 
 ```
 
@@ -221,9 +259,9 @@ mod_lag1_pois <- pffr(Y ~ ffpc(tmax_lag1, npc = 1) + ffpc(tmin_lag1, npc = 2) + 
 summary(mod_lag1_pois)
 ```
 
--   Se puede observar que, con un nivel de significancia del 5%, todos los componentes para todas las covariables tienen un efecto significativo sobre la respuesta funcional.
+-   Se puede observar que, con un nivel de significancia del 5%, todos los componentes para todas las covariables tienen un efecto significativo sobre la respuesta funcional excepto el segundo componente de aod.
 
--   El modelo logra explicar un 72% de la variabilidad total (ajustado).
+-   El modelo logra explicar un 74% de la variabilidad total (ajustado).
 
 ### Supuestos
 
@@ -250,16 +288,16 @@ phi
 ## Quasi-Poisson
 
 ```{r}
-mod_lag1_quasi <- pffr(Y ~ ffpc(tmax_lag1, npc = 1) + ffpc(tmin_lag1, npc = 2) + ffpc(precip_lag1, npc = 1) + ffpc(ampmax_lag1, npc = 2) + ffpc(ampmin_lag1, npc = 2) + ffpc(aod_lag1, npc = 2) + ffpc(hr_lag1, npc = 2) + offset(log(population)), family = quasipoisson(link = "log"), data = base, yind = 1:52, method = "REML")
+mod_lag1_quasi <- pffr(Y ~  ffpc(tmax_lag1, npc = 1) + ffpc(tmin_lag1, npc = 2) + ffpc(precip_lag1, npc = 1) + ffpc(ampmax_lag1, npc = 2) + ffpc(ampmin_lag1, npc = 2) + ffpc(aod_lag1, npc = 2) + ffpc(hr_lag1, npc = 2) + offset(log(poblacion)), family = quasipoisson(link = "log"), data = base_lag1, yind = 1:52, method = "REML", sandwich = 'cl2')
 ```
 
 ```{r}
 summary(mod_lag1_quasi)
 ```
 
--   Se puede observar que, con un nivel de significancia del 5%, todos los componentes para todas las covariables tienen un efecto significativo sobre la respuesta funcional, con excepción del segundo componente para AOD.
+-   Se puede observar que, con un nivel de significancia del 5%, los componentes significantes son el primer componente de tmax, ambos componentes de tmin, ambos componentes de amp.max, el primer componente de aod y ambos componentes de hr.
 
--   El modelo logra explicar un 70% de la variabilidad total (ajustado).
+-   El modelo logra explicar un 73% de la variabilidad total (ajustado).
 
 ### Supuestos
 
@@ -310,16 +348,16 @@ ggplot(res_df2, aes(x = week, y = residual, group = id)) + geom_line(alpha = 0.1
 El modelo con distribución binomial negativa es otra forma de tomar en cuenta la sobredispersión presente en los datos. En este modelo también se incluye un offset de población.
 
 ```{r}
-mod_lag1_bn <- pffr(Y ~ ffpc(tmax_lag1, npc = 1) + ffpc(tmin_lag1, npc = 2) + ffpc(precip_lag1, npc = 1) + ffpc(ampmax_lag1, npc = 2) + ffpc(ampmin_lag1, npc = 2) + ffpc(aod_lag1, npc = 2) + ffpc(hr_lag1, npc = 2) + offset(log(population)), family = nb(), data = base, yind = 1:52)
+mod_lag1_bn <- pffr(Y ~ ffpc(tmax_lag1, npc = 1) + ffpc(tmin_lag1, npc = 2) + ffpc(precip_lag1, npc = 1) + ffpc(ampmax_lag1, npc = 2) + ffpc(ampmin_lag1, npc = 2) + ffpc(aod_lag1, npc = 2) + ffpc(hr_lag1, npc = 2) + offset(log(poblacion)), family = nb(), data = base_lag1, yind = 1:52, sandwich = 'cl2')
 ```
 
 ```{r}
 summary(mod_lag1_bn)
 ```
 
--   Se puede observar que, con un nivel de significancia del 5%, todos los componentes para todas las covariables tienen un efecto significativo sobre la respuesta funcional, con excepción del segundo componente para AOD.
+-   Se puede observar que, con un nivel de significancia del 5%, los componentes significantes son el primer componente de tmax, ambos componentes de tmin, ambos componentes de amp.max, el primer componente de aod y ambos componentes de hr.
 
--   El modelo logra explicar un 70% de la variabilidad total (ajustado).
+-   El modelo logra explicar un 72% de la variabilidad total (ajustado).
 
 ### Supuestos
 
@@ -378,29 +416,32 @@ Para la selección del modelo final se consideró el rendimiento de cada uno, ut
 yhat_norm <- predict(mod_lag1_norm, type = "response")
 devianza_norm <- deviance(mod_lag1_norm)
 
-fMSE_norm <- mean(rowMeans((base$Y - yhat_norm)^2))
-fMAE_norm <- mean(rowMeans(abs(base$Y - yhat_norm)))
+fMSE_norm <- mean(rowMeans((base_lag1$Y - yhat_norm)^2))
+fMAE_norm <- mean(rowMeans(abs(base_lag1$Y - yhat_norm)))
+# AIC(mod_lag1_norm); BIC(mod_lag1_norm)
 
 # Poisson
 yhat_pois <- predict(mod_lag1_pois, type = "response")
 devianza_pois <- deviance(mod_lag1_pois)
 
-fMSE_pois <- mean(rowMeans((base$Y - yhat_pois)^2))
-fMAE_pois <- mean(rowMeans(abs(base$Y - yhat_pois)))
+fMSE_pois <- mean(rowMeans((base_lag1$Y - yhat_pois)^2))
+fMAE_pois <- mean(rowMeans(abs(base_lag1$Y - yhat_pois)))
+# AIC(mod_lag1_pois); BIC(mod_lag1_pois)
 
 # Quasi-poisson
 yhat_quasi <- predict(mod_lag1_quasi, type = "response")
 devianza_quasi <- deviance(mod_lag1_quasi)
 
-fMSE_quasi <- mean(rowMeans((base$Y - yhat_quasi)^2))
-fMAE_quasi <- mean(rowMeans(abs(base$Y - yhat_quasi)))
+fMSE_quasi <- mean(rowMeans((base_lag1$Y - yhat_quasi)^2))
+fMAE_quasi <- mean(rowMeans(abs(base_lag1$Y - yhat_quasi)))
 
 # Binomial negativa
 yhat_bn <- predict(mod_lag1_bn, type = "response")
 devianza_bn <- deviance(mod_lag1_bn)
 
-fMSE_bn <- mean(rowMeans((base$Y - yhat_bn)^2))
-fMAE_bn <- mean(rowMeans(abs(base$Y - yhat_bn)))
+fMSE_bn <- mean(rowMeans((base_lag1$Y - yhat_bn)^2))
+fMAE_bn <- mean(rowMeans(abs(base_lag1$Y - yhat_bn)))
+# AIC(mod_lag1_bn); BIC(mod_lag1_bn)
 
 ```
 
@@ -411,7 +452,7 @@ fMAE_bn <- mean(rowMeans(abs(base$Y - yhat_bn)))
 #| tbl-cap: "Tabla de valores p"
 #| label: tbl-metricas
 
-metricas <- data.frame(Distribución = c("Normal", "Poisson", "Quasi-poisson", "Binomial Negativa"), MSE = c(1680.2,1507.6,1652.7,1673.7), MAE = c(31.8,30.2,31.5,31.6), Devianza = c(1747454.0,3580.8,3912.8,950.7),"R-sq.(adj)" = c("70%", "72%", "70%", "70%"))
+metricas <- data.frame(Distribución = c("Normal", "Poisson", "Quasi-poisson", "Binomial Negativa"), MSE = c(fMSE_norm,fMSE_pois,fMSE_quasi,fMSE_bn), MAE = c(fMAE_norm,fMAE_pois,fMAE_quasi,fMAE_bn), Devianza = c(devianza_norm,devianza_pois,devianza_quasi,devianza_bn),"R-sq.(adj)" = c("72%", "74%", "73%", "72%"))
 
 kable(metricas)
 ```
@@ -425,96 +466,103 @@ AIC(mod_lag1_bn); BIC(mod_lag1_bn)
 ```
 
 ```{r}
-mod_lag1_bna <- pffr(Y ~ ffpc(tmin_lag1, npc = 2) + ffpc(precip_lag1, npc = 1) + ffpc(ampmax_lag1, npc = 2) + ffpc(ampmin_lag1, npc = 2) + ffpc(aod_lag1, npc = 2) + ffpc(hr_lag1, npc = 2) + offset(log(population)), family = nb(), data = base, yind = 1:52)
+mod_lag1_bna <- pffr(Y ~  ffpc(tmin_lag1, npc = 2) + ffpc(precip_lag1, npc = 1) + ffpc(ampmax_lag1, npc = 2) + ffpc(ampmin_lag1, npc = 2) + ffpc(aod_lag1, npc = 2) + ffpc(hr_lag1, npc = 2) + offset(log(poblacion)), family = nb(), data = base_lag1, yind = 1:52, sandwich = 'cl2')
 
 AIC(mod_lag1_bna); BIC(mod_lag1_bna)
 ```
 
 ```{r}
-mod_lag1_bnb <- pffr(Y ~ ffpc(tmax_lag1, npc = 1) + ffpc(precip_lag1, npc = 1) + ffpc(ampmax_lag1, npc = 2) + ffpc(ampmin_lag1, npc = 2) + ffpc(aod_lag1, npc = 2) + ffpc(hr_lag1, npc = 2) + offset(log(population)), family = nb(), data = base, yind = 1:52)
+mod_lag1_bnb <- pffr(Y ~  ffpc(tmax_lag1, npc = 1) + ffpc(precip_lag1, npc = 1) + ffpc(ampmax_lag1, npc = 2) + ffpc(ampmin_lag1, npc = 2) + ffpc(aod_lag1, npc = 2) + ffpc(hr_lag1, npc = 2) + offset(log(poblacion)), family = nb(), data = base_lag1, yind = 1:52, sandwich = 'cl2')
 
 AIC(mod_lag1_bnb); BIC(mod_lag1_bnb)
 ```
 
 ```{r}
-mod_lag1_bnc <- pffr(Y ~ ffpc(tmax_lag1, npc = 1) + ffpc(tmin_lag1, npc = 2) + ffpc(ampmax_lag1, npc = 2) + ffpc(ampmin_lag1, npc = 2) + ffpc(aod_lag1, npc = 2) + ffpc(hr_lag1, npc = 2) + offset(log(population)), family = nb(), data = base, yind = 1:52)
+mod_lag1_bnc <- pffr(Y ~  ffpc(tmax_lag1, npc = 1) + ffpc(tmin_lag1, npc = 2) + ffpc(ampmax_lag1, npc = 2) + ffpc(ampmin_lag1, npc = 2) + ffpc(aod_lag1, npc = 2) + ffpc(hr_lag1, npc = 2) + offset(log(poblacion)), family = nb(), data = base_lag1, yind = 1:52, sandwich = 'cl2')
 
 AIC(mod_lag1_bnc); BIC(mod_lag1_bnc)
 ```
 
 ```{r}
-mod_lag1_bnd <- pffr(Y ~ ffpc(tmax_lag1, npc = 1) + ffpc(tmin_lag1, npc = 2) + ffpc(precip_lag1, npc = 
-1)  + ffpc(ampmin_lag1, npc = 2) + ffpc(aod_lag1, npc = 2) + ffpc(hr_lag1, npc = 2) + offset(log(population)), family = nb(), data = base, yind = 1:52)
+mod_lag1_bnd <- pffr(Y ~  ffpc(tmax_lag1, npc = 1) + ffpc(tmin_lag1, npc = 2) + ffpc(precip_lag1, npc = 
+1)  + ffpc(ampmin_lag1, npc = 2) + ffpc(aod_lag1, npc = 2) + ffpc(hr_lag1, npc = 2) + offset(log(poblacion)), family = nb(), data = base_lag1, yind = 1:52, sandwich = 'cl2')
 
 AIC(mod_lag1_bnd); BIC(mod_lag1_bnd)
 ```
 
 ```{r}
-mod_lag1_bne <- pffr(Y ~ ffpc(tmax_lag1, npc = 1) + ffpc(tmin_lag1, npc = 2) + ffpc(precip_lag1, npc = 
-1) + ffpc(ampmax_lag1, npc = 2) + ffpc(aod_lag1, npc = 2) + ffpc(hr_lag1, npc = 2) + offset(log(population)), family = nb(), data = base, yind = 1:52)
+mod_lag1_bne <- pffr(Y ~  ffpc(tmax_lag1, npc = 1) + ffpc(tmin_lag1, npc = 2) + ffpc(precip_lag1, npc = 
+1) + ffpc(ampmax_lag1, npc = 2) + ffpc(aod_lag1, npc = 2) + ffpc(hr_lag1, npc = 2) + offset(log(poblacion)), family = nb(), data = base_lag1, yind = 1:52, sandwich = 'cl2')
 
 AIC(mod_lag1_bne); BIC(mod_lag1_bne)
 ```
 
 ```{r}
-mod_lag1_bnf <- pffr(Y ~ ffpc(tmax_lag1, npc = 1) + ffpc(tmin_lag1, npc = 2) + ffpc(precip_lag1, npc = 
-1) + ffpc(ampmax_lag1, npc = 2) + ffpc(ampmin_lag1, npc = 2) + ffpc(hr_lag1, npc = 2) + offset(log(population)), family = nb(), data = base, yind = 1:52)
+mod_lag1_bnf <- pffr(Y ~  ffpc(tmax_lag1, npc = 1) + ffpc(tmin_lag1, npc = 2) + ffpc(precip_lag1, npc = 
+1) + ffpc(ampmax_lag1, npc = 2) + ffpc(ampmin_lag1, npc = 2) + ffpc(hr_lag1, npc = 2) + offset(log(poblacion)), family = nb(), data = base_lag1, yind = 1:52, sandwich = 'cl2')
 
 AIC(mod_lag1_bnf); BIC(mod_lag1_bnf)
 ```
 
 ```{r}
-mod_lag1_bng <- pffr(Y ~ ffpc(tmax_lag1, npc = 1) + ffpc(tmin_lag1, npc = 2) + ffpc(precip_lag1, npc = 
-1) + ffpc(ampmax_lag1, npc = 2) + ffpc(ampmin_lag1, npc = 2) + ffpc(aod_lag1, npc = 2) + offset(log(population)), family = nb(), data = base, yind = 1:52)
+mod_lag1_bng <- pffr(Y ~  ffpc(tmax_lag1, npc = 1) + ffpc(tmin_lag1, npc = 2) + ffpc(precip_lag1, npc = 
+1) + ffpc(ampmax_lag1, npc = 2) + ffpc(ampmin_lag1, npc = 2) + ffpc(aod_lag1, npc = 2) + offset(log(poblacion)), family = nb(), data = base_lag1, yind = 1:52, sandwich = 'cl2')
 
 AIC(mod_lag1_bng); BIC(mod_lag1_bng)
 ```
 
-Al comparar los valores de AIC y BIC para los dintintos modelos, se concluye que el modelo se mantiene con todas las covariables.
+Al comparar los valores de AIC y BIC para los dintintos modelos, se concluye que se mantiene todas las covariables.
 
-Se prosigue eliminando un componente principal a la vez. Primero se elimina el segundo componente de la variable de aod_lag1, debido a que no resultó significativo.
+Se prosigue eliminando un componente principal a la vez.
 
 ```{r}
-mod_lag1_bn1 <- pffr(Y ~ ffpc(tmax_lag1, npc = 1) + ffpc(tmin_lag1, npc = 1) + ffpc(precip_lag1, npc = 1) + ffpc(ampmax_lag1, npc = 2) + ffpc(ampmin_lag1, npc = 2) + ffpc(aod_lag1, npc = 1) + ffpc(hr_lag1, npc = 2) + offset(log(population)), family = nb(), data = base, yind = 1:52)
+mod_lag1_bn1 <- pffr(Y ~ ffpc(tmax_lag1, npc = 1) + ffpc(tmin_lag1, npc = 1) + ffpc(precip_lag1, npc = 1) + ffpc(ampmax_lag1, npc = 2) + ffpc(ampmin_lag1, npc = 2) + ffpc(aod_lag1, npc = 2) + ffpc(hr_lag1, npc = 2) + offset(log(poblacion)), family = nb(), data = base_lag1, yind = 1:52, sandwich = 'cl2')
 
-summary(mod_lag1_bn1)$r.sq
+#summary(mod_lag1_bn1)$r.sq
 AIC(mod_lag1_bn1); BIC(mod_lag1_bn1)
 ```
 
 ```{r}
-mod_lag1_bn2 <- pffr(Y ~ ffpc(tmax_lag1, npc = 1) + ffpc(tmin_lag1, npc = 2) + ffpc(precip_lag1, npc = 1) + ffpc(ampmax_lag1, npc = 1) + ffpc(ampmin_lag1, npc = 2) + ffpc(aod_lag1, npc = 1) + ffpc(hr_lag1, npc = 2) + offset(log(population)), family = nb(), data = base, yind = 1:52)
+mod_lag1_bn2 <- pffr(Y ~ ffpc(tmax_lag1, npc = 1) + ffpc(tmin_lag1, npc = 2) + ffpc(precip_lag1, npc = 1) + ffpc(ampmax_lag1, npc = 1) + ffpc(ampmin_lag1, npc = 2) + ffpc(aod_lag1, npc = 2) + ffpc(hr_lag1, npc = 2) + offset(log(poblacion)), family = nb(), data = base_lag1, yind = 1:52, sandwich = 'cl2')
 
-summary(mod_lag1_bn2)$r.sq
+#summary(mod_lag1_bn2)$r.sq
 AIC(mod_lag1_bn2); BIC(mod_lag1_bn2)
 ```
 
 ```{r}
-mod_lag1_bn3 <- pffr(Y ~ ffpc(tmax_lag1, npc = 1) + ffpc(tmin_lag1, npc = 2) + ffpc(precip_lag1, npc = 1) + ffpc(ampmax_lag1, npc = 2) + ffpc(ampmin_lag1, npc = 1) + ffpc(aod_lag1, npc = 1) + ffpc(hr_lag1, npc = 2) + offset(log(population)), family = nb(), data = base, yind = 1:52)
+mod_lag1_bn3 <- pffr(Y ~ ffpc(tmax_lag1, npc = 1) + ffpc(tmin_lag1, npc = 2) + ffpc(precip_lag1, npc = 1) + ffpc(ampmax_lag1, npc = 2) + ffpc(ampmin_lag1, npc = 1) + ffpc(aod_lag1, npc = 2) + ffpc(hr_lag1, npc = 2) + offset(log(poblacion)), family = nb(), data = base_lag1, yind = 1:52, sandwich = 'cl2')
 
-summary(mod_lag1_bn3)$r.sq
+#summary(mod_lag1_bn3)$r.sq
 AIC(mod_lag1_bn3); BIC(mod_lag1_bn3)
 ```
 
 ```{r}
-mod_lag1_bn4 <- pffr(Y ~ ffpc(tmax_lag1, npc = 1) + ffpc(tmin_lag1, npc = 2) + ffpc(precip_lag1, npc = 1) + ffpc(ampmax_lag1, npc = 2) + ffpc(ampmin_lag1, npc = 2) + ffpc(aod_lag1, npc = 1) + ffpc(hr_lag1, npc = 1) + offset(log(population)), family = nb(), data = base, yind = 1:52)
+mod_lag1_bn4 <- pffr(Y ~ ffpc(tmax_lag1, npc = 1) + ffpc(tmin_lag1, npc = 2) + ffpc(precip_lag1, npc = 1) + ffpc(ampmax_lag1, npc = 2) + ffpc(ampmin_lag1, npc = 2) + ffpc(aod_lag1, npc = 1) + ffpc(hr_lag1, npc = 1) + offset(log(poblacion)), family = nb(), data = base_lag1, yind = 1:52, sandwich = 'cl2')
 
-summary(mod_lag1_bn4)$r.sq
+#summary(mod_lag1_bn4)$r.sq
 AIC(mod_lag1_bn4); BIC(mod_lag1_bn4)
+```
+
+```{r}
+mod_lag1_bn5 <- pffr(Y ~ ffpc(tmax_lag1, npc = 1) + ffpc(tmin_lag1, npc = 2) + ffpc(precip_lag1, npc = 1) + ffpc(ampmax_lag1, npc = 2) + ffpc(ampmin_lag1, npc = 2) + ffpc(aod_lag1, npc = 2) + ffpc(hr_lag1, npc = 1) + offset(log(poblacion)), family = nb(), data = base_lag1, yind = 1:52, sandwich = 'cl2')
+
+# summary(mod_lag1_bn5)$r.sq
+AIC(mod_lag1_bn5); BIC(mod_lag1_bn5)
 ```
 
 Al comparar los valores de AIC y BIC de los dintintos modelos, se concluye que el modelo se mantiene con sus componentes restantes.
 
 ```{r}
-mod_lag1_final <- pffr(Y ~ ffpc(tmax_lag1, npc = 1) + ffpc(tmin_lag1, npc = 2) + ffpc(precip_lag1, npc = 1) + ffpc(ampmax_lag1, npc = 2) + ffpc(ampmin_lag1, npc = 2) + ffpc(aod_lag1, npc = 1) + ffpc(hr_lag1, npc = 2) + offset(log(poblacion)), family = nb(), data = base, yind = 1:52)
+mod_lag1_final <- pffr(Y ~  ffpc(tmax_lag1, npc = 1) + ffpc(tmin_lag1, npc = 2) + ffpc(precip_lag1, npc = 1) + ffpc(ampmax_lag1, npc = 2) + ffpc(ampmin_lag1, npc = 2) + ffpc(aod_lag1, npc = 2) + ffpc(hr_lag1, npc = 2) + offset(log(poblacion)), family = nb(), data = base_lag1, yind = 1:52, sandwich = 'cl2')
 ```
 
 ```{r}
 summary(mod_lag1_final)
 ```
 
--   Se puede observar que, con un nivel de significancia del 5%, todos los componentes para todas las covariables tienen un efecto significativo sobre la respuesta funcional.
+-   Se puede observar que, con un nivel de significancia del 5%, los componentes significantes son el primer componente de tmax, ambos componentes de tmin, ambos componentes de amp.max, el primer componente de aod y ambos componentes de hr.
 
--   El modelo logra explicar un 70% de la variabilidad total (ajustado).
+-   El modelo logra explicar un 72% de la variabilidad total (ajustado).
 
 ## Diagnóstico
 
@@ -564,6 +612,7 @@ ggplot(res_df, aes(x = week, y = residual, group = id)) + geom_line(alpha = 0.1)
 ## Interpretaciones
 
 ```{r}
+#| warning: false
 coef <- coef(mod_lag1_final)
 
 beta0.hat <- coef$smterms$`Intercept(yindex)`$coef
@@ -594,6 +643,7 @@ beta11.hat <- coef$smterms$`ffpc(hr_lag1,2)2`$coef
 #|   - "PC1: Amp_min_mean"
 #|   - "PC2: Amp_min_mean"
 #|   - "PC1: AOD"
+#|   - "PC2: AOD"
 #|   - "PC1: HR"
 #|   - "PC2: HR"
 #| label: fig-mod_lag1_bn1
@@ -617,11 +667,13 @@ plot(mod_lag1_final, shade = T, shade.col = "lightblue", xlab = "Semana", ylab =
 
 plot(mod_lag1_final, shade = T, shade.col = "lightblue", xlab = "Semana", ylab = "PC2: Amplitud de la temperatura mínima media", select = 9, ylim = c(-1,1))
 
-plot(mod_lag1_final, shade = T, shade.col = "lightblue", xlab = "Semana", ylab = "PC1: Profundidad óptica de aerosoles", select = 10, ylim = c(-0.5,0.5))
+plot(mod_lag1_final, shade = T, shade.col = "lightblue", xlab = "Semana", ylab = "PC1: Profundidad óptica de aerosoles", select = 10, ylim = c(-10,10))
 
-plot(mod_lag1_final, shade = T, shade.col = "lightblue", xlab = "Semana", ylab = "PC1: Humedad Relativa", select = 11, ylim = c(-40,40))
+plot(mod_lag1_final, shade = T, shade.col = "lightblue", xlab = "Semana", ylab = "PC2: Profundidad óptica de aerosoles", select = 11, ylim = c(-10,10))
 
-plot(mod_lag1_final, shade = T, shade.col = "lightblue", xlab = "Semana", ylab = "PC2: Humedad relativa", select = 12, ylim = c(-20,20))
+plot(mod_lag1_final, shade = T, shade.col = "lightblue", xlab = "Semana", ylab = "PC1: Humedad Relativa", select = 12, ylim = c(-40,40))
+
+plot(mod_lag1_final, shade = T, shade.col = "lightblue", xlab = "Semana", ylab = "PC2: Humedad relativa", select = 13, ylim = c(-20,20))
 
 ```
 
@@ -654,14 +706,14 @@ plot(mod_lag1_final, shade = T, shade.col = "lightblue", xlab = "Semana", ylab =
 
 yhat_final <- predict(mod_lag1_final, type = "response")
 for(i in 1:20){
-plot(week, base$Y[i,], 
+plot(week, base_lag1$Y[i,], 
      type = "l", lwd = 1.5, 
      col = rgb(0, 0, 0, alpha = 0.1), cex = 1, 
      xlab = "Semanas", 
      ylab = "Hospitalizaciones", bty = "n")
 
 # Graficar los datos antes del corte 
-lines(week, base$Y[i,], 
+lines(week, base_lag1$Y[i,], 
       pch = 19, cex = 0.8)
 
 # Agregar la predicción del modelo pffr
