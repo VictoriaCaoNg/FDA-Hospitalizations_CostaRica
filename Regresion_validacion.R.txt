@@ -1,0 +1,247 @@
+# poblacion <> population. En los scripts en qmd, no veo dónde se define population. Creo que a la hora de definir, se ligó con tiplr:population y no está correcto.
+# 
+# Modifiqué las matrices con lag k, porque deberíamos aprovechar las últimas 2 semanas del año anterior.
+# 
+# Por último, incluí dos métodos nuevos:
+#   sandwich = "cl2" que es la corrección a muestras pequeñas, y el método usando boostrapping.
+
+
+library(dplyr)
+library(ggplot2)
+library(ggfortify)
+library(forecast)
+library(fpp2)
+library(data.table)
+library(TTR)
+library(xts)
+library(recipes)
+library(tidyverse)
+library(tidyquant)
+library(timetk)
+library(sweep)
+library(lubridate)
+library(fda)
+library(readxl)
+library(knitr)
+library(refund)
+library(mgcv)
+library(fields)
+library(car)
+library(gratia)
+library(tidyfun)
+library(caret)
+library(imputeTS)
+
+
+load("./Data/datos_finales.RData")
+load("./Data/datos_AOD_HR.Rdata")
+Rh <- read.csv("./Data/RH_semanal.csv")
+poblacion <- read_xlsx("./Data/Poblacion_Nacional.xlsx")
+datos_finales
+# Remover semana 53
+datos_finales <- datos_finales %>% filter(epi.week!=53)
+
+df <- expand.grid(
+  year = 2000:2019,
+  week = 1:52
+)
+
+# Optional: sort by year and week
+df <- df[order(df$year, df$week), ]
+df_aerosol <- df %>% left_join(datos_aerosol, by = c("year", "week"))
+df_aerosol <- df_aerosol %>% mutate(aerosol = na.approx(aerosol, na.rm = FALSE))
+
+
+
+# Respuesta
+week <- 1:52
+y <- datos_finales %>% group_by(year,epi.week) %>% summarise(hospitalizaciones = sum(egreso)) %>% pivot_wider(names_from = epi.week, values_from = hospitalizaciones) %>% arrange(year)
+y <- as.matrix(y)[,-1]
+
+# Covariables
+Tmax_mean <- datos_finales %>% group_by(year, epi.week) %>% summarise(Tmax_mean = mean(Tmax_mean, na.rm = T)) %>% pivot_wider(names_from = epi.week, values_from = Tmax_mean) %>% arrange(year)
+Tmax_mean <- as.matrix(Tmax_mean)[,-1]
+
+Tmin_mean <- datos_finales %>% group_by(year, epi.week) %>% summarise(Tmin_mean = mean(Tmin_mean, na.rm = T)) %>% pivot_wider(names_from = epi.week, values_from = Tmin_mean) %>% arrange(year)
+Tmin_mean <- as.matrix(Tmin_mean)[,-1]
+
+precip_mean <- datos_finales %>% group_by(year, epi.week) %>% summarise(Precip_mean = mean(precip_mean_mean, na.rm = T)) %>% pivot_wider(names_from = epi.week, values_from = Precip_mean) %>% arrange(year)
+precip_mean <- as.matrix(precip_mean)[,-1]
+
+amp_max_mean <- datos_finales %>% group_by(year, epi.week) %>% summarise(amp_max_mean = mean(amplitude_max_mean, na.rm = T)) %>% pivot_wider(names_from = epi.week, values_from = amp_max_mean) %>% arrange(year)
+amp_max_mean <- as.matrix(amp_max_mean)[,-1]
+
+amp_min_mean <- datos_finales %>% group_by(year, epi.week) %>% summarise(amp_min_mean = mean(amplitude_min_mean, na.rm = T)) %>% pivot_wider(names_from = epi.week, values_from = amp_min_mean) %>% arrange(year)
+amp_min_mean <- as.matrix(amp_min_mean)[,-1]
+
+AOD <- df_aerosol %>% pivot_wider(names_from = week, values_from = aerosol) %>% arrange(year)
+AOD <- as.matrix(AOD)[,-1]
+df_aerosol <- AOD/0.001
+
+Rh <- Rh |> dplyr::select(epiyear, epiweek,RH_mean) |>
+  dplyr::filter(
+    epiyear >= 2000,
+    epiyear <= 2019,
+    epiweek <= 52
+  ) 
+HR <- Rh %>% pivot_wider(names_from = epiweek, values_from = RH_mean) %>% arrange(epiyear)
+HR <- as.matrix(HR)[,-1]
+
+poblacionCR <- poblacion %>%   
+  dplyr::filter(
+  Year >= 2000,
+  Year <= 2019) %>% dplyr::select(PoblacionCR)
+
+base <- list()
+base$Y <- y
+base$Tmax <- Tmax_mean
+base$Tmin <- Tmin_mean
+base$precip <- precip_mean
+base$amp_max_mean <- amp_max_mean
+base$amp_min_mean <- amp_min_mean
+base$aerosol <- AOD
+base$HR <- HR
+base$year <- 1:20
+base$poblacion <- poblacionCR$PoblacionCR
+
+##
+
+lag_mat <- function(M, k = 2) {
+  v <- as.vector(t(M))                    # one continuous weekly series
+  v_lag <- c(rep(NA, k), head(v, -k))
+  out <- matrix(v_lag, nrow = nrow(M), ncol = ncol(M), byrow = TRUE)
+  dimnames(out) <- dimnames(M)
+  out
+}
+
+lag_all <- function(base, k = 2, exclude = "Y", suffix = paste0("_lag", k)) {
+  for (v in setdiff(names(base), exclude)) {
+    x <- base[[v]]
+    if (is.matrix(x)) {
+      lagged <- lag_mat(unclass(x), k)    # unclass() strips AsIs if present
+      base[[paste0(v, suffix)]] <- if (is.data.frame(base)) I(lagged) else lagged
+    }
+  }
+  base
+}
+
+base_lag2 <- lag_all(base, k = 2)   # adds tmax_lag2, tmin_lag2, ...
+
+
+
+# Robust estimation with cluster and CL2 ----------------------------------
+
+mod_cluster <- pffr(Y ~ ffpc(Tmax_lag2, npc = 1) + ffpc(Tmin_lag2, npc = 2) +
+                  ffpc(precip_lag2, npc = 1) + ffpc(amp_max_mean_lag2, npc = 2) +
+                  ffpc(amp_min_mean_lag2, npc = 2) + ffpc(aerosol_lag2, npc = 2) +
+                  ffpc(HR_lag2, npc = 2) + offset(log(poblacion)),
+                family = nb(), data = base_lag2, yind = 1:52, sandwich = "cluster")
+
+mod_cl2 <- pffr(Y ~ ffpc(Tmax_lag2, npc = 1) + ffpc(Tmin_lag2, npc = 2) +
+                  ffpc(precip_lag2, npc = 1) + ffpc(amp_max_mean_lag2, npc = 2) +
+                  ffpc(amp_min_mean_lag2, npc = 2) + ffpc(aerosol_lag2, npc = 2) +
+                  ffpc(HR_lag2, npc = 2) + offset(log(poblacion)),
+                family = nb(), data = base_lag2, yind = 1:52, sandwich = "cl2")
+
+summary(mod_cluster)
+summary(mod_cl2)
+
+class(base_lag2)       
+str(base_lag2, max.level = 1)
+
+# Convertir las matrices como columna individual con I(), sin perder la estructura
+
+base_lag2_df <- data.frame(row.names = seq_len(nrow(base_lag2$Y)))
+for (v in names(base_lag2)) {
+  x <- base_lag2[[v]]
+  base_lag2_df[[v]] <- if (is.matrix(x)) I(x) else x  
+}
+str(base_lag2_df, max.level = 1)   # should have 20 rows
+
+
+mod_cl2 <- pffr(Y ~ ffpc(Tmax_lag2, npc = 1) + ffpc(Tmin_lag2, npc = 2) +
+                  ffpc(precip_lag2, npc = 1) + ffpc(amp_max_mean_lag2, npc = 2) +
+                  ffpc(amp_min_mean_lag2, npc = 2) + ffpc(aerosol_lag2, npc = 2) +
+                  ffpc(HR_lag2, npc = 2) + offset(log(poblacion)),
+                family = nb(), data = base_lag2_df, yind = 1:52, sandwich = "cl2")
+
+
+library(parallel)
+
+# Linux or Mac
+
+n_workers <- max(1, detectCores(logical = FALSE) - 2)
+
+RNGkind("L'Ecuyer-CMRG"); set.seed(2026)
+boot <- pffr_coefboot(mod_cl2, B = 1000, method = "resample",
+                      parallel = "multicore", ncpus = n_workers)
+
+
+# Windows
+
+cl <- makeCluster(n_workers)                 # PSOCK cluster, works on Windows
+clusterEvalQ(cl, {
+  library(refund)
+  if (requireNamespace("RhpcBLASctl", quietly = TRUE))
+    RhpcBLASctl::blas_set_num_threads(1)
+})
+clusterSetRNGStream(cl, 2026)
+
+boot <- pffr_coefboot(mod_cl2, B = 1000, method = "resample",
+                      parallel = "snow", ncpus = n_workers, cl = cl)
+stopCluster(cl)
+
+
+saveRDS(boot, "boot_cl2_B1000.rds")   # you don't want to rerun this
+
+boot$ci_meta     # B_used, n_failed, failure_rate, levels, method
+names(boot$smterms)
+head(boot$smterms[[1]]$coef)
+
+cf    <- coef(mod_cl2, sandwich = "cl2")   # same default grids as the bootstrap
+tcrit <- qt(0.975, df = 19)                # G - 1 df
+
+comp <- lapply(names(boot$smterms), function(nm) {
+  b  <- boot$smterms[[nm]]$coef
+  s  <- cf$smterms[[nm]]$coef
+  bb <- boot$boot_ci$smterms[[nm]]
+  stopifnot(nrow(b) == nrow(s))
+  xcols <- setdiff(names(b), c("value", "se", "lower", "upper"))
+  data.frame(b[, xcols, drop = FALSE],
+             est     = b$value,
+             cl2_lo  = s$value - tcrit * s$se,
+             cl2_hi  = s$value + tcrit * s$se,
+             boot_lo = bb[, "lower_95"],
+             boot_hi = bb[, "upper_95"])
+})
+names(comp) <- names(boot$smterms)
+
+summ <- do.call(rbind, lapply(names(comp), function(nm) {
+  d <- comp[[nm]]
+  sig_cl2  <- d$cl2_lo  > 0 | d$cl2_hi  < 0
+  sig_boot <- d$boot_lo > 0 | d$boot_hi < 0
+  data.frame(term = nm,
+             width_ratio   = median((d$boot_hi - d$boot_lo) / (d$cl2_hi - d$cl2_lo)),
+             pct_sig_cl2   = 100 * mean(sig_cl2),
+             pct_sig_boot  = 100 * mean(sig_boot),
+             pct_agreement = 100 * mean(sig_cl2 == sig_boot))
+}))
+print(summ, digits = 3)
+
+
+library(ggplot2)
+plot_term <- function(d, title) {
+  x <- names(d)[1]                     # first coordinate column (lag/week index)
+  ggplot(d, aes(.data[[x]], est)) +
+    geom_ribbon(aes(ymin = boot_lo, ymax = boot_hi), fill = "grey70", alpha = .5) +
+    geom_line(aes(y = cl2_lo), linetype = "dashed") +
+    geom_line(aes(y = cl2_hi), linetype = "dashed") +
+    geom_line(linewidth = .8) +
+    geom_hline(yintercept = 0, colour = "grey40") +
+    labs(title = title, x = x, y = "Coefficient",
+         caption = "Grey: curve bootstrap 95%; dashed: CL2 (t, 19 df) 95%")
+}
+plots <- Map(plot_term, comp, names(comp))
+
+
+
